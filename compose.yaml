@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: /api
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://host.docker.internal:8080}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${FRONTEND_PORT:-8081}:80'
+    restart: unless-stopped
