@@ -1,3 +1,4 @@
+
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
@@ -5,7 +6,7 @@ import { AppProviders } from '@/app/providers/AppProviders';
 import { routes } from '@/app/router';
 
 describe('App', () => {
-  it('renderiza a página inicial da infraestrutura', async () => {
+  it('renderiza a página de motoristas e veículos', async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/'] });
 
     render(
@@ -14,7 +15,14 @@ describe('App', () => {
       </AppProviders>,
     );
 
-    expect(await screen.findByRole('heading', { name: /gestão de frotas/i })).toBeInTheDocument();
-    expect(screen.getByText(/infraestrutura do frontend pronta/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', {
+        name: /motoristas e veículos/i,
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/gerencie os cadastros e acompanhe as informações da frota/i),
+    ).toBeInTheDocument();
   });
 });
