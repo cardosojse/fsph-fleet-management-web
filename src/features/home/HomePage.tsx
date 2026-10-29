@@ -1,4 +1,3 @@
-
 import { useMemo, useState, type FormEvent } from 'react';
 import {
   Box,
@@ -43,10 +42,38 @@ type Driver = {
 };
 
 const initialVehicles: Vehicle[] = [
-  { id: 1, plate: 'ABC-1D23', model: 'Fiat Argo', category: 'Passeio', driver: 'João Silva', status: 'Ativo' },
-  { id: 2, plate: 'DEF-4G56', model: 'Chevrolet Onix', category: 'Passeio', driver: 'Maria Santos', status: 'Ativo' },
-  { id: 3, plate: 'GHI-7J89', model: 'Fiat Fiorino', category: 'Utilitário', driver: 'Carlos Lima', status: 'Manutenção' },
-  { id: 4, plate: 'JKL-2M34', model: 'Renault Master', category: 'Van', driver: 'Não atribuído', status: 'Inativo' },
+  {
+    id: 1,
+    plate: 'ABC-1D23',
+    model: 'Fiat Argo',
+    category: 'Passeio',
+    driver: 'João Silva',
+    status: 'Ativo',
+  },
+  {
+    id: 2,
+    plate: 'DEF-4G56',
+    model: 'Chevrolet Onix',
+    category: 'Passeio',
+    driver: 'Maria Santos',
+    status: 'Ativo',
+  },
+  {
+    id: 3,
+    plate: 'GHI-7J89',
+    model: 'Fiat Fiorino',
+    category: 'Utilitário',
+    driver: 'Carlos Lima',
+    status: 'Manutenção',
+  },
+  {
+    id: 4,
+    plate: 'JKL-2M34',
+    model: 'Renault Master',
+    category: 'Van',
+    driver: 'Não atribuído',
+    status: 'Inativo',
+  },
 ];
 
 const initialDrivers: Driver[] = [
@@ -210,14 +237,14 @@ export function HomePage() {
             <Divider />
 
             <Stack
-  direction={{ xs: 'column', md: 'row' }}
-  spacing={2}
-  sx={{
-    p: 3,
-    justifyContent: 'space-between',
-    alignItems: { md: 'center' },
-  }}
->
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              sx={{
+                p: 3,
+                justifyContent: 'space-between',
+                alignItems: { md: 'center' },
+              }}
+            >
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
                   {tab === 'vehicles' ? 'Veículos cadastrados' : 'Motoristas cadastrados'}
@@ -294,7 +321,13 @@ export function HomePage() {
                           <TableCell>
                             <Chip
                               label={vehicle.status}
-                              color={vehicle.status === 'Ativo' ? 'success' : vehicle.status === 'Manutenção' ? 'warning' : 'default'}
+                              color={
+                                vehicle.status === 'Ativo'
+                                  ? 'success'
+                                  : vehicle.status === 'Manutenção'
+                                    ? 'warning'
+                                    : 'default'
+                              }
                               size="small"
                             />
                           </TableCell>
@@ -329,8 +362,8 @@ export function HomePage() {
             <Divider />
 
             <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              Exibindo {tab === 'vehicles' ? visibleVehicles.length : visibleDrivers.length} registro(s).
-              {' '}Dados demonstrativos.
+              Exibindo {tab === 'vehicles' ? visibleVehicles.length : visibleDrivers.length}{' '}
+              registro(s). Dados demonstrativos.
             </Typography>
           </Paper>
         </Stack>
@@ -338,9 +371,7 @@ export function HomePage() {
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={handleSave}>
-          <DialogTitle>
-            Cadastrar {tab === 'vehicles' ? 'veículo' : 'motorista'}
-          </DialogTitle>
+          <DialogTitle>Cadastrar {tab === 'vehicles' ? 'veículo' : 'motorista'}</DialogTitle>
 
           <DialogContent>
             <Stack spacing={2} sx={{ pt: 1 }}>
