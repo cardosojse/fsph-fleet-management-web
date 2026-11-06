@@ -2,6 +2,8 @@
 
 Frontend do sistema de gestão de frotas da FSPH.
 
+Para homologação na Vercel, consulte [Deploy Vercel](docs/deploy-vercel.md).
+
 ## Requisitos
 
 - Node.js 24;
