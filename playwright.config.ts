@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const node = `"${process.execPath}"`;
+const vite = 'node_modules/vite/bin/vite.js';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -18,7 +21,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm preview --host 127.0.0.1',
+    command: `${node} ${vite} build && ${node} ${vite} preview --host 127.0.0.1`,
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
   },
