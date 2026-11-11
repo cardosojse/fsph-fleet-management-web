@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=24.0.0",
+    "node": "24.x",
     "pnpm": ">=11.0.0"
   },
   "scripts": {
@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "api:generate": "node scripts/generate-api.mjs"
+    "api:generate": "node scripts/generate-api.mjs",
+    "api:snapshot": "node scripts/snapshot-api.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

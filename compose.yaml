@@ -5,9 +5,9 @@ services:
       args:
         VITE_API_BASE_URL: /api
     environment:
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://host.docker.internal:8080}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://host.docker.internal:8081}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     ports:
-      - '${FRONTEND_PORT:-8081}:80'
+      - '${FRONTEND_PORT:-8082}:80'
     restart: unless-stopped

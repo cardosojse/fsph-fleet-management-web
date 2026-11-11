@@ -1,45 +1,40 @@
-import { Box, Chip, Container, Paper, Stack, Typography } from '@mui/material';
+import { Button, Paper, Stack, Typography } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { PageHeading } from '@/shared/components/PageHeading';
+import { useSession } from '@/features/auth/useSession';
 
-const foundations = [
-  'React + TypeScript',
-  'Vite',
-  'TanStack Query',
-  'OpenAPI',
-  'Vitest',
-  'Playwright',
-];
+const modules = [
+  ['/transportes', 'Transportes', 'Solicite transportes e acompanhe o atendimento.'],
+  ['/viagens', 'Viagens', 'Planeje saídas, organize paradas e registre a execução.'],
+  ['/veiculos', 'Veículos', 'Consulte a frota, a quilometragem e os documentos.'],
+  ['/motoristas', 'Motoristas', 'Gerencie os motoristas e o histórico de CNHs.'],
+  ['/setores', 'Setores', 'Organize os setores da instituição.'],
+  ['/usuarios', 'Usuários', 'Gerencie contas, perfis e situação de acesso.'],
+] as const;
 
 export function HomePage() {
+  const session = useSession();
   return (
-    <Box component="main" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 6 }}>
-      <Container maxWidth="md">
-        <Paper
-          elevation={0}
-          sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 4, md: 7 } }}
-        >
-          <Stack spacing={3}>
-            <Typography
-              color="primary"
-              sx={{ fontWeight: 700, letterSpacing: '0.08em' }}
-              variant="overline"
-            >
-              FSPH
-            </Typography>
-            <Typography component="h1" variant="h1">
-              Gestão de Frotas
-            </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: '1.125rem', maxWidth: '62ch' }}>
-              Infraestrutura do frontend pronta. As próximas entregas podem evoluir por domínio sem
-              acoplar regras de negócio aos componentes compartilhados.
-            </Typography>
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }} useFlexGap>
-              {foundations.map((foundation) => (
-                <Chip key={foundation} label={foundation} variant="outlined" />
-              ))}
+    <div>
+      <PageHeading
+        title="Gestão de Frotas"
+        description={`Olá, ${session.data?.name ?? ''}. Acesse os módulos para gerenciar a frota.`}
+      />
+      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 3 }}>
+        {modules.map(([to, title, description]) => (
+          <Paper key={to} variant="outlined" sx={{ p: 3, flex: '1 1 280px' }}>
+            <Stack spacing={2}>
+              <Typography component="h2" variant="h6">
+                {title}
+              </Typography>
+              <Typography color="text.secondary">{description}</Typography>
+              <Button component={Link} to={to} sx={{ alignSelf: 'flex-start' }}>
+                Acessar {title.toLowerCase()}
+              </Button>
             </Stack>
-          </Stack>
-        </Paper>
-      </Container>
-    </Box>
+          </Paper>
+        ))}
+      </Stack>
+    </div>
   );
 }
