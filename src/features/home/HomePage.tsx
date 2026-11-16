@@ -1,78 +1,115 @@
-import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
+import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded';
+import { Box, ButtonBase, Paper, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
-const foundations = [
-  'React + TypeScript',
-  'Vite',
-  'TanStack Query',
-  'OpenAPI',
-  'Vitest',
-  'Playwright',
+import { tokens } from '@/app/theme';
+import { InstitutionalFooter } from '@/shared/layout/InstitutionalFooter';
+import { InstitutionalHeader } from '@/shared/layout/PublicLayout';
+
+const sections = [
+  {
+    title: 'Acesso',
+    links: [
+      { to: '/login', label: 'Entrar no sistema', hint: 'Login com conta institucional' },
+      { to: '/cadastro', label: 'Cadastro de usuário', hint: 'Solicitar acesso ao sistema' },
+      { to: '/recuperar-senha', label: 'Esqueci minha senha', hint: 'Recuperar acesso à conta' },
+    ],
+  },
+  {
+    title: 'Gestão',
+    links: [
+      { to: '/dashboard/demo', label: 'Dashboard', hint: 'Visão geral da frota' },
+      { to: '/usuarios', label: 'Lista de usuários', hint: 'Contas, perfis e auditoria' },
+    ],
+  },
 ];
 
 export function HomePage() {
   return (
-    <Box component="main" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', py: 6 }}>
-      <Container maxWidth="md">
-        <Paper
-          elevation={0}
-          sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 4, md: 7 } }}
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <InstitutionalHeader />
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          width: '100%',
+          maxWidth: 1200,
+          mx: 'auto',
+          px: { xs: 2, sm: 4 },
+          py: { xs: 4, sm: 7 },
+        }}
+      >
+        <Typography variant="overline" color="primary" component="p" sx={{ fontSize: 11 }}>
+          FSPH
+        </Typography>
+        <Typography component="h1" variant="h1">
+          Gestão de Frotas
+        </Typography>
+        <Typography color="text.secondary" sx={{ mt: 1, maxWidth: '62ch', lineHeight: 1.6 }}>
+          Sistema de gestão da frota administrativa e do Serviço de Verificação de Óbito. Escolha
+          abaixo a área que deseja acessar.
+        </Typography>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 3,
+            mt: 4,
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' },
+            alignItems: 'start',
+          }}
         >
-          <Stack spacing={3}>
-            <Button
-              component={RouterLink}
-              to="/login"
-              variant="contained"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Entrar no sistema
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/usuarios"
-              variant="outlined"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Lista de usuários
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/cadastro"
-              variant="contained"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Cadastro de usuário
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/recuperar-senha"
-              variant="text"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Esqueci minha senha
-            </Button>
-            <Typography
-              color="primary"
-              sx={{ fontWeight: 700, letterSpacing: '0.08em' }}
-              variant="overline"
-            >
-              FSPH
-            </Typography>
-            <Typography component="h1" variant="h1">
-              Gestão de Frotas
-            </Typography>
-            <Typography color="text.secondary" sx={{ fontSize: '1.125rem', maxWidth: '62ch' }}>
-              Infraestrutura do frontend pronta. As próximas entregas podem evoluir por domínio sem
-              acoplar regras de negócio aos componentes compartilhados.
-            </Typography>
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }} useFlexGap>
-              {foundations.map((foundation) => (
-                <Chip key={foundation} label={foundation} variant="outlined" />
-              ))}
-            </Stack>
-          </Stack>
-        </Paper>
-      </Container>
+          {sections.map((section) => (
+            <Paper key={section.title} variant="outlined" component="section">
+              <Typography
+                component="h2"
+                variant="h3"
+                sx={{ px: 2.5, py: 1.75, borderBottom: 1, borderColor: 'divider' }}
+              >
+                {section.title}
+              </Typography>
+              <Stack component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+                {section.links.map((link, index) => (
+                  <li key={link.to}>
+                    <ButtonBase
+                      component={RouterLink}
+                      to={link.to}
+                      sx={{
+                        width: '100%',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        gap: 2,
+                        px: 2.5,
+                        py: 1.75,
+                        borderTop: index ? 1 : 0,
+                        borderColor: 'divider',
+                        '&:hover': { bgcolor: tokens.surface.sunken },
+                        '&.Mui-focusVisible': { outline: `2px solid ${tokens.blue[600]}` },
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ fontWeight: 600, color: 'primary.main', fontSize: 15 }}>
+                          {link.label}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {link.hint}
+                        </Typography>
+                      </Box>
+                      <ChevronRightRounded aria-hidden sx={{ color: 'text.disabled' }} />
+                    </ButtonBase>
+                  </li>
+                ))}
+              </Stack>
+            </Paper>
+          ))}
+        </Box>
+
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 4 }}>
+          Infraestrutura do frontend pronta. Os módulos são entregues por domínio e utilizam dados
+          demonstrativos até a integração com a API.
+        </Typography>
+      </Box>
+      <InstitutionalFooter />
     </Box>
   );
 }

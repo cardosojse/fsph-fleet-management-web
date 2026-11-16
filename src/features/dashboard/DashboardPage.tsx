@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link as RouterLink, Navigate, useNavigate } from 'react-router-dom';
+import AltRouteOutlined from '@mui/icons-material/AltRouteOutlined';
+import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import BuildOutlined from '@mui/icons-material/BuildOutlined';
+import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded';
+import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded';
+import type { SvgIconComponent } from '@mui/icons-material';
 import {
   Alert,
-  Avatar,
   Box,
-  Breadcrumbs,
   Button,
   Chip,
   CircularProgress,
@@ -14,7 +15,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Link,
   MenuItem,
   Paper,
   Stack,
@@ -27,10 +27,17 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+
+import { tokens } from '@/app/theme';
 import { authToken } from '@/shared/api/auth-token';
-import { loadDemoDashboard } from './mocks/dashboard';
+import { AppLayout } from '@/shared/layout/AppLayout';
+
 import type { DashboardData } from './dashboard.types';
-import './dashboard.css';
+import { loadDemoDashboard } from './mocks/dashboard';
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
@@ -49,30 +56,61 @@ const dayFormat = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Fortaleza',
 });
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const modules = ['Solicitações', 'Rotas', 'Ordens', 'Veículos', 'Condutores', 'Manutenções'];
+
+type Detail = { title: string; description: string };
 
 function Card({
   title,
+  subtitle,
   children,
   action,
 }: {
   title: string;
+  subtitle?: string;
   children: ReactNode;
   action?: ReactNode;
 }) {
   return (
-    <Paper component="section" variant="outlined" className="dashboard-card">
+    <Paper component="section" variant="outlined" sx={{ minWidth: 0, height: '100%' }}>
       <Stack
         direction="row"
-        sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 2 }}
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 1,
+          px: 2.5,
+          py: 1.75,
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
       >
-        <Typography component="h2" sx={{ fontSize: 17, fontWeight: 700 }}>
-          {title}
-        </Typography>
+        <Box>
+          <Typography component="h2" variant="h3">
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
         {action}
       </Stack>
-      {children}
+      <Box sx={{ p: 2.5 }}>{children}</Box>
     </Paper>
+  );
+}
+
+function EmptyState({ children }: { children: ReactNode }) {
+  return (
+    <Typography
+      role="status"
+      variant="body2"
+      color="text.secondary"
+      sx={{ py: 3, textAlign: 'center' }}
+    >
+      {children}
+    </Typography>
   );
 }
 
@@ -83,133 +121,75 @@ export function DashboardPage({ demo = false }: { demo?: boolean }) {
 }
 
 function DashboardContent() {
-  const navigate = useNavigate();
-  const [detail, setDetail] = useState<{ title: string; description: string } | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
   const dashboard = useQuery({
     queryKey: ['dashboard', 'demo'],
     queryFn: loadDemoDashboard,
     retry: false,
   });
-  function leave() {
-    authToken.clear();
-    navigate('/login', { replace: true });
-  }
   return (
-    <Box className="fleet-dashboard">
-      <Box component="aside" className="dashboard-sidebar">
-        <Typography sx={{ fontSize: 28, fontWeight: 800, px: 1, mb: 2 }}>SVO</Typography>
-        <Box component="nav" aria-label="Menu principal" className="dashboard-nav">
-          <Button component={RouterLink} to="/dashboard/demo" aria-current="page">
-            ▦ Dashboard
-          </Button>
-          {modules.map((title) => (
-            <Button
-              key={title}
-              onClick={() =>
-                setDetail({
-                  title,
-                  description:
-                    'Esta funcionalidade ainda não está implementada neste projeto. Nenhuma operação foi executada.',
-                })
-              }
-            >
-              {title}
-            </Button>
-          ))}
-          <Button component={RouterLink} to="/usuarios">
-            Usuários
-          </Button>
-        </Box>
-        <Box className="dashboard-sidebar-user">
-          <Avatar sx={{ bgcolor: 'primary.main', mb: 1 }}>AC</Avatar>
-          <Typography sx={{ fontWeight: 600 }}>Ana Coordenadora</Typography>
-          <Typography variant="body2" sx={{ my: 1, color: '#cbd5e1' }}>
-            Perfil fictício • Gestora
-            <br />
-            Administrativo + SVO
-          </Typography>
-          <Button onClick={leave} sx={{ color: 'white' }}>
-            Sair
-          </Button>
-        </Box>
-      </Box>
-      <Box component="main" sx={{ minWidth: 0 }}>
-        <Box component="header" className="dashboard-header">
-          <Breadcrumbs sx={{ fontSize: 14 }}>
-            <Link component={RouterLink} to="/">
-              SVO
-            </Link>
-            <Typography variant="body2">Frota administrativa</Typography>
-            <Typography variant="body2">Dashboard</Typography>
-          </Breadcrumbs>
-          <Typography component="h1" sx={{ fontSize: { xs: 26, md: 30 }, fontWeight: 700, mt: 1 }}>
-            Visão geral da frota
-          </Typography>
-          {dashboard.data && (
-            <Typography variant="body2" color="text.secondary">
-              Período: {dashboard.data.period} • Atualização dos dados fictícios:{' '}
-              {dateFormat.format(new Date(dashboard.data.updatedAt))}
-            </Typography>
-          )}
-          <Stack
-            direction="row"
-            sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 2, mt: 3, mb: 2 }}
+    <AppLayout
+      active="dashboard"
+      title="Visão geral da frota"
+      breadcrumbs={[
+        { label: 'SVO', to: '/' },
+        { label: 'Frota administrativa' },
+        { label: 'Dashboard' },
+      ]}
+      subtitle={
+        dashboard.data && (
+          <>
+            Período: {dashboard.data.period} • Atualização dos dados fictícios:{' '}
+            {dateFormat.format(new Date(dashboard.data.updatedAt))}
+          </>
+        )
+      }
+      actions={
+        dashboard.data && (
+          <Button
+            variant="outlined"
+            startIcon={dashboard.isFetching ? <CircularProgress size={16} /> : <RefreshRounded />}
+            disabled={dashboard.isFetching}
+            onClick={() => void dashboard.refetch()}
+            sx={{ flexShrink: 0 }}
           >
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Avatar sx={{ bgcolor: 'primary.main' }}>AC</Avatar>
-              <Box>
-                <Typography sx={{ fontWeight: 600 }}>Ana Coordenadora</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Perfil demonstrativo / Gestora
-                </Typography>
-              </Box>
-            </Stack>
-            <Chip variant="outlined" label="Âmbito fictício: Administrativo + SVO" />
-            <Button onClick={leave}>Sair</Button>
+            {dashboard.isFetching ? 'Atualizando…' : 'Atualizar dados'}
+          </Button>
+        )
+      }
+    >
+      <Stack spacing={3}>
+        <Alert severity="info">
+          Modo demonstrativo: dados históricos fictícios da referência (outubro de 2026). A API do
+          dashboard ainda não está integrada. Este perfil não representa permissões autenticadas.
+        </Alert>
+        {dashboard.isPending ? (
+          <Stack role="status" sx={{ alignItems: 'center', p: 8 }} spacing={2}>
+            <CircularProgress />
+            <Typography color="text.secondary">Carregando dashboard…</Typography>
           </Stack>
-        </Box>
-        <Stack className="dashboard-body" spacing={2.5}>
-          <Alert severity="info">
-            Modo demonstrativo: dados históricos fictícios da referência (outubro de 2026). A API do
-            dashboard ainda não está integrada. Este perfil não representa permissões autenticadas.
+        ) : dashboard.isError && !dashboard.data ? (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" onClick={() => void dashboard.refetch()}>
+                Tentar novamente
+              </Button>
+            }
+          >
+            Não foi possível carregar o dashboard.
           </Alert>
-          {dashboard.isPending ? (
-            <Stack role="status" sx={{ alignItems: 'center', p: 6 }} spacing={2}>
-              <CircularProgress />
-              <Typography>Carregando dashboard…</Typography>
-            </Stack>
-          ) : dashboard.isError && !dashboard.data ? (
-            <Alert
-              severity="error"
-              action={
-                <Button color="inherit" onClick={() => void dashboard.refetch()}>
-                  Tentar novamente
-                </Button>
-              }
-            >
-              Não foi possível carregar o dashboard.
-            </Alert>
-          ) : (
-            <>
-              {dashboard.isRefetchError && (
-                <Alert severity="warning">
-                  Falha ao atualizar. Os dados anteriores foram mantidos. Tente atualizar novamente.
-                </Alert>
-              )}
-              <Box sx={{ alignSelf: 'flex-end' }}>
-                <Button
-                  variant="outlined"
-                  disabled={dashboard.isFetching}
-                  onClick={() => void dashboard.refetch()}
-                >
-                  {dashboard.isFetching ? 'Atualizando…' : 'Atualizar dados'}
-                </Button>
-              </Box>
-              <DashboardSections data={dashboard.data} onDetail={setDetail} />
-            </>
-          )}
-        </Stack>
-      </Box>
+        ) : (
+          <>
+            {dashboard.isRefetchError && (
+              <Alert severity="warning">
+                Falha ao atualizar. Os dados anteriores foram mantidos. Tente atualizar novamente.
+              </Alert>
+            )}
+            <DashboardSections data={dashboard.data} onDetail={setDetail} />
+          </>
+        )}
+      </Stack>
       <Dialog
         open={!!detail}
         onClose={() => setDetail(null)}
@@ -219,13 +199,43 @@ function DashboardContent() {
       >
         <DialogTitle id="dashboard-detail-title">{detail?.title}</DialogTitle>
         <DialogContent>
-          <Typography>{detail?.description}</Typography>
+          <Typography sx={{ whiteSpace: 'pre-line' }} color="text.secondary">
+            {detail?.description}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetail(null)}>Fechar</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </AppLayout>
+  );
+}
+
+interface Kpi {
+  label: string;
+  value: number;
+  hint: string;
+  icon: SvgIconComponent;
+  color: string;
+}
+
+function KpiCard({ kpi }: { kpi: Kpi }) {
+  const Icon = kpi.icon;
+  return (
+    <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 } }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+        <Icon aria-hidden sx={{ fontSize: 18, color: kpi.color }} />
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+          {kpi.label}
+        </Typography>
+      </Stack>
+      <Typography sx={{ fontSize: { xs: 28, md: 32 }, fontWeight: 700, lineHeight: 1.2, mt: 1 }}>
+        {kpi.value}
+      </Typography>
+      <Typography variant="caption" color="text.secondary">
+        {kpi.hint}
+      </Typography>
+    </Paper>
   );
 }
 
@@ -234,7 +244,7 @@ function DashboardSections({
   onDetail,
 }: {
   data: DashboardData;
-  onDetail: (detail: { title: string; description: string }) => void;
+  onDetail: (detail: Detail) => void;
 }) {
   const [sector, setSector] = useState('all');
   const [period, setPeriod] = useState('all');
@@ -250,113 +260,198 @@ function DashboardSections({
   );
   const total = Object.values(data.fleet).reduce((sum, value) => sum + value, 0);
   const peak = Math.max(1, ...data.dailyRequests.map((day) => day.count));
-  const kpis = [
+  const { success, warning, error, info } = tokens.status;
+  const kpis: Kpi[] = [
     {
       label: 'Disponíveis',
       value: data.fleet.available,
       hint: `${total ? Math.round((data.fleet.available / total) * 100) : 0}% da frota`,
-      color: 'primary.main',
+      icon: CheckCircleOutlineRounded,
+      color: success.fg,
     },
     {
       label: 'Em rota',
       value: data.fleet.inRoute,
       hint: `${data.fleet.inRoute} em execução`,
-      color: 'success.main',
+      icon: AltRouteOutlined,
+      color: info.fg,
     },
     {
       label: 'Em manutenção',
       value: data.fleet.maintenance,
       hint: `${data.fleet.maintenance} veículo(s)`,
-      color: 'warning.main',
+      icon: BuildOutlined,
+      color: warning.fg,
     },
     {
       label: 'Indisponíveis',
       value: data.fleet.unavailable,
       hint: `${data.fleet.unavailable} veículo(s)`,
-      color: 'error.main',
+      icon: BlockOutlined,
+      color: error.fg,
     },
   ];
+
   return (
     <>
-      <Box component="section" aria-label="Indicadores da frota" className="dashboard-kpis">
+      <Box
+        component="section"
+        aria-label="Indicadores da frota"
+        sx={{
+          display: 'grid',
+          gap: { xs: 1.5, md: 2 },
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            lg: 'repeat(4, minmax(0, 1fr))',
+          },
+        }}
+      >
         {kpis.map((kpi) => (
-          <Paper key={kpi.label} variant="outlined" className="dashboard-card">
-            <Typography variant="body2" sx={{ color: kpi.color }}>
-              ▦ {kpi.hint}
-            </Typography>
-            <Typography sx={{ fontSize: 30, fontWeight: 700, my: 0.5 }}>{kpi.value}</Typography>
-            <Typography variant="body2">{kpi.label}</Typography>
-          </Paper>
+          <KpiCard key={kpi.label} kpi={kpi} />
         ))}
       </Box>
-      <Box className="dashboard-summary">
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr)',
+            md: 'repeat(2, minmax(0, 1fr))',
+            lg: 'minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)',
+          },
+        }}
+      >
         <Card title="Triagem e alocação">
-          <Box className="dashboard-stats">
+          <Box
+            component="dl"
+            sx={{
+              m: 0,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              overflow: 'hidden',
+              '& > div': { p: 1.5 },
+              '& > div:nth-of-type(odd)': { borderRight: 1, borderRightColor: 'divider' },
+              '& > div:nth-of-type(-n+2)': { borderBottom: 1, borderBottomColor: 'divider' },
+            }}
+          >
             {[
               ['Triagens pendentes', data.triage.pending],
               ['Aloc. pendentes', data.triage.allocation],
               ['Solicitações / dia', data.triage.requestsToday],
               ['Rotas ativas', data.routes.length],
             ].map(([label, value]) => (
-              <Box key={label} className="dashboard-stat">
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <div key={label}>
+                <Typography component="dt" variant="caption" color="text.secondary">
                   {label}
                 </Typography>
-                <Typography sx={{ fontSize: 24, fontWeight: 700 }}>{value}</Typography>
-              </Box>
+                <Typography component="dd" sx={{ m: 0, fontSize: 24, fontWeight: 700 }}>
+                  {value}
+                </Typography>
+              </div>
             ))}
           </Box>
         </Card>
-        <Card title="Solicitações / dia">
+
+        <Card title="Solicitações / dia" subtitle={data.period}>
           {data.dailyRequests.length === 0 ? (
-            <Typography role="status">Sem histórico de solicitações.</Typography>
+            <EmptyState>Sem histórico de solicitações.</EmptyState>
           ) : (
             <Box component="figure" sx={{ m: 0 }}>
               <Box
-                className="dashboard-chart"
                 role="img"
                 aria-label={data.dailyRequests
                   .map((day) => `${day.date}: ${day.count} solicitações`)
                   .join('; ')}
+                sx={{
+                  display: 'flex',
+                  gap: 1,
+                  height: 150,
+                  alignItems: 'flex-end',
+                  borderBottom: `1px solid ${tokens.border.strong}`,
+                }}
               >
-                {data.dailyRequests.map((day) => (
-                  <Box key={day.date} className="dashboard-chart-column">
-                    <Typography variant="caption">{day.count}</Typography>
-                    <Box
-                      sx={{
-                        height: `${(day.count / peak) * 100}px`,
-                        minHeight: 2,
-                        bgcolor: day.count === peak ? 'primary.main' : '#dbe8fd',
-                        width: '65%',
-                        maxWidth: 28,
-                        borderRadius: '3px 3px 0 0',
-                      }}
-                    />
-                    <Typography variant="caption">{day.date}</Typography>
-                  </Box>
-                ))}
+                {data.dailyRequests.map((day) => {
+                  const isPeak = day.count === peak;
+                  return (
+                    <Stack
+                      key={day.date}
+                      sx={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 0.5 }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ fontWeight: isPeak ? 700 : 400 }}
+                        color={isPeak ? 'text.primary' : 'text.secondary'}
+                      >
+                        {day.count}
+                      </Typography>
+                      <Box
+                        sx={{
+                          height: `${(day.count / peak) * 110}px`,
+                          minHeight: 2,
+                          width: '64%',
+                          maxWidth: 28,
+                          bgcolor: isPeak ? tokens.blue[800] : '#b9c8e6',
+                        }}
+                      />
+                    </Stack>
+                  );
+                })}
               </Box>
+              <Stack direction="row" sx={{ gap: 1, mt: 0.5 }}>
+                {data.dailyRequests.map((day) => (
+                  <Typography
+                    key={day.date}
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ flex: 1, textAlign: 'center' }}
+                  >
+                    {day.date}
+                  </Typography>
+                ))}
+              </Stack>
               <Typography
                 component="figcaption"
-                variant="body2"
+                variant="caption"
                 color="text.secondary"
-                sx={{ mt: 1 }}
+                sx={{ display: 'block', mt: 1.5 }}
               >
                 Série histórica demonstrativa: {data.period}.
               </Typography>
             </Box>
           )}
         </Card>
+
+        <Card title="Frota por status" subtitle={`${total} veículos`}>
+          <Stack component="ul" spacing={1.75} sx={{ p: 0, m: 0, listStyle: 'none' }}>
+            {kpis.map((kpi) => (
+              <li key={kpi.label}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2">{kpi.label}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {kpi.value}
+                  </Typography>
+                </Stack>
+                <Box aria-hidden sx={{ height: 6, bgcolor: tokens.surface.sunken }}>
+                  <Box
+                    sx={{
+                      height: '100%',
+                      width: `${total ? (kpi.value / total) * 100 : 0}%`,
+                      bgcolor: tokens.navy[800],
+                    }}
+                  />
+                </Box>
+              </li>
+            ))}
+          </Stack>
+        </Card>
       </Box>
-      <Card
-        title="Rotas ativas"
-        action={
-          <Typography variant="body2" color="text.secondary">
-            Execução, ocupação e status
-          </Typography>
-        }
-      >
-        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 2, mb: 2 }}>
+
+      <Card title="Rotas ativas" subtitle="Execução, ocupação e status">
+        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1.5, mb: 2 }}>
           <TextField
             select
             label="Filtrar por setor"
@@ -391,6 +486,7 @@ function DashboardSections({
           tabIndex={0}
           role="region"
           aria-label="Rotas ativas: tabela com rolagem horizontal"
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}
         >
           <Table size="small" aria-label="Rotas ativas" sx={{ minWidth: 960 }}>
             <TableHead>
@@ -406,72 +502,126 @@ function DashboardSections({
                   'Status',
                   'Ocupação',
                 ].map((label) => (
-                  <TableCell key={label}>{label}</TableCell>
+                  <TableCell key={label} sx={{ py: 1.25 }}>
+                    {label}
+                  </TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
-              {routes.map((route) => (
-                <TableRow key={route.id} hover>
-                  <TableCell sx={{ fontWeight: 600 }}>{route.id}</TableCell>
-                  <TableCell>{route.sector}</TableCell>
-                  <TableCell>{route.origin}</TableCell>
-                  <TableCell>{route.destination}</TableCell>
-                  <TableCell>{route.driver}</TableCell>
-                  <TableCell>{route.vehicle}</TableCell>
-                  <TableCell>{timeFormat.format(new Date(route.startsAt))}</TableCell>
-                  <TableCell>
-                    <Chip size="small" color="success" label="Em execução" />
-                  </TableCell>
-                  <TableCell>
-                    {route.occupied}/{route.capacity}
-                    {route.occupied >= route.capacity ? ' Lotado' : ''}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {routes.map((route) => {
+                const full = route.occupied >= route.capacity;
+                return (
+                  <TableRow
+                    key={route.id}
+                    hover
+                    sx={{ '&:last-child td': { borderBottom: 0 }, '& td': { py: 1.5 } }}
+                  >
+                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{route.id}</TableCell>
+                    <TableCell>{route.sector}</TableCell>
+                    <TableCell>{route.origin}</TableCell>
+                    <TableCell>{route.destination}</TableCell>
+                    <TableCell>{route.driver}</TableCell>
+                    <TableCell>{route.vehicle}</TableCell>
+                    <TableCell>{timeFormat.format(new Date(route.startsAt))}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label="Em execução"
+                        sx={{ bgcolor: success.bg, color: success.fg }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      {route.occupied}/{route.capacity}
+                      {full && (
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{ ml: 1, color: warning.fg, fontWeight: 600 }}
+                        >
+                          Lotado
+                        </Typography>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
         {routes.length === 0 && (
-          <Typography role="status" sx={{ p: 3, textAlign: 'center' }}>
+          <EmptyState>
             {data.routes.length === 0
               ? 'Nenhuma rota ativa cadastrada.'
               : 'Nenhum resultado para os filtros selecionados.'}
-          </Typography>
+          </EmptyState>
         )}
       </Card>
-      <Box className="dashboard-bottom">
-        <Card title="Abastecimento" action={<Typography variant="body2">R$ / L</Typography>}>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1.4fr)' },
+          alignItems: 'start',
+        }}
+      >
+        <Card
+          title="Abastecimento"
+          subtitle="Últimos registros por veículo"
+          action={
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              R$ / L
+            </Typography>
+          }
+        >
           {data.refueling.length === 0 ? (
-            <Typography role="status">Nenhum abastecimento registrado.</Typography>
+            <EmptyState>Nenhum abastecimento registrado.</EmptyState>
           ) : (
-            <Stack component="ul" spacing={2} sx={{ p: 0, m: 0, listStyle: 'none' }}>
-              {data.refueling.map((fuel) => (
+            <Box component="ul" sx={{ p: 0, m: 0, listStyle: 'none' }}>
+              {data.refueling.map((fuel, index) => (
                 <Stack
                   key={fuel.id}
                   component="li"
                   direction="row"
-                  sx={{ justifyContent: 'space-between', gap: 2 }}
+                  sx={{
+                    alignItems: 'center',
+                    gap: 2,
+                    py: 1.25,
+                    borderTop: index ? 1 : 0,
+                    borderColor: 'divider',
+                  }}
                 >
-                  <Box>
-                    <Typography sx={{ fontWeight: 600 }}>{fuel.vehicle}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {fuel.vehicle}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
                       {fuel.detail}
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                    color={fuel.amount === null ? 'text.disabled' : 'text.primary'}
+                  >
                     {fuel.amount === null ? '—' : currency.format(fuel.amount)}
                   </Typography>
                 </Stack>
               ))}
-            </Stack>
+            </Box>
           )}
         </Card>
+
         <Card
           title="Alertas"
+          subtitle={
+            data.alerts.length > 0 ? `${data.alerts.length} pendência(s) em aberto` : undefined
+          }
           action={
             data.alerts.length > 0 && (
               <Button
+                size="small"
                 onClick={() =>
                   onDetail({
                     title: 'Alertas da frota — demonstração',
@@ -487,26 +637,34 @@ function DashboardSections({
           }
         >
           {data.alerts.length === 0 ? (
-            <Typography role="status">Nenhum alerta registrado.</Typography>
+            <EmptyState>Nenhum alerta registrado.</EmptyState>
           ) : (
-            <Stack component="ul" spacing={1.5} sx={{ p: 0, m: 0, listStyle: 'none' }}>
-              {data.alerts.map((alert) => (
+            <Box component="ul" sx={{ p: 0, m: 0, listStyle: 'none' }}>
+              {data.alerts.map((alert, index) => (
                 <Stack
                   key={alert.id}
                   component="li"
                   direction="row"
-                  className="dashboard-alert"
-                  sx={{ alignItems: 'center', gap: 1 }}
+                  sx={{
+                    alignItems: 'center',
+                    gap: 1.5,
+                    py: 1.25,
+                    borderTop: index ? 1 : 0,
+                    borderColor: 'divider',
+                  }}
                 >
-                  <Box sx={{ flex: 1 }}>
+                  <WarningAmberRounded aria-hidden sx={{ color: warning.fg, fontSize: 20 }} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {alert.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       {alert.detail}
                     </Typography>
                   </Box>
                   <Button
+                    size="small"
+                    variant="outlined"
                     aria-label={`Abrir ${alert.title}`}
                     onClick={() =>
                       onDetail({
@@ -519,7 +677,7 @@ function DashboardSections({
                   </Button>
                 </Stack>
               ))}
-            </Stack>
+            </Box>
           )}
         </Card>
       </Box>

@@ -1,10 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Alert,
-  Box,
   Button,
   CircularProgress,
-  Container,
   InputAdornment,
   Stack,
   TextField,
@@ -15,6 +13,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
+
+import { PublicLayout } from '@/shared/layout/PublicLayout';
 
 import {
   demoResetToken,
@@ -32,56 +32,34 @@ export function PasswordResetPage() {
   // Real recovery links cannot be validated until the API contract is available.
   const demo = params.get('token') === demoResetToken;
   return (
-    <Box sx={{ minHeight: '100vh' }}>
-      <Box
-        component="header"
-        sx={{ bgcolor: '#0f172a', color: 'white', px: { xs: 3, md: 6 }, py: { xs: 2.5, md: 4 } }}
-      >
-        <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
-          <Typography sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 800 }}>SVO</Typography>
-          <Box sx={{ borderLeft: '1px solid #334155', pl: 3 }}>
-            <Typography sx={{ fontWeight: 600, fontSize: { xs: 14, sm: 20 } }}>
-              Frota administrativa • Serviço de Verificação de Óbito
-            </Typography>
-            <Typography sx={{ fontSize: { xs: 13, sm: 18 }, color: '#cbd5e1' }}>
-              Acesso institucional
-            </Typography>
-          </Box>
-        </Stack>
-      </Box>
-      <Container component="main" maxWidth={false} sx={{ maxWidth: 704, py: { xs: 4, md: 9 } }}>
-        <Typography color="primary" sx={{ fontWeight: 700, mb: 1 }}>
-          SVO / ACESSO
-        </Typography>
-        <Typography component="h1" variant="h1" sx={{ color: '#0f172a', mb: 2 }}>
-          Alterar Senha
-        </Typography>
-        <Typography color="text.secondary" sx={{ fontSize: { xs: 18, sm: 22 }, mb: 4 }}>
-          Altere sua senha.
-        </Typography>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Modo demonstrativo: a API de alteração de senha ainda não está integrada. Nenhuma senha
-          será enviada, armazenada ou alterada. Links reais de recuperação não são validados nesta
-          demonstração.
-        </Alert>
-        {demo ? (
-          <DemoPasswordReset />
-        ) : (
-          <Stack spacing={2}>
-            <Alert severity="warning">
-              Link ausente ou indisponível para esta demonstração. Inicie a recuperação simulada
-              para abrir um link demonstrativo. A validade de links reais depende da API.
-            </Alert>
-            <Button component={RouterLink} to="/recuperar-senha" variant="contained">
-              Solicitar recuperação de senha
-            </Button>
-          </Stack>
-        )}
-        <Button component={RouterLink} to="/login" sx={{ mt: 3 }}>
+    <PublicLayout
+      title="Alterar senha"
+      description="Defina uma nova senha para acessar o sistema."
+      after={
+        <Button component={RouterLink} to="/login">
           Voltar ao login
         </Button>
-      </Container>
-    </Box>
+      }
+    >
+      <Alert severity="info" sx={{ mb: 3, fontSize: 13 }}>
+        Modo demonstrativo: a API de alteração de senha ainda não está integrada. Nenhuma senha será
+        enviada, armazenada ou alterada. Links reais de recuperação não são validados nesta
+        demonstração.
+      </Alert>
+      {demo ? (
+        <DemoPasswordReset />
+      ) : (
+        <Stack spacing={2}>
+          <Alert severity="warning">
+            Link ausente ou indisponível para esta demonstração. Inicie a recuperação simulada para
+            abrir um link demonstrativo. A validade de links reais depende da API.
+          </Alert>
+          <Button component={RouterLink} to="/recuperar-senha" variant="contained">
+            Solicitar recuperação de senha
+          </Button>
+        </Stack>
+      )}
+    </PublicLayout>
   );
 }
 
@@ -146,7 +124,7 @@ function DemoPasswordReset() {
     );
   if (resetPassword.isSuccess)
     return (
-      <Stack spacing={3}>
+      <Stack spacing={2}>
         <Alert severity="success" role="status">
           Simulação concluída. Sua senha real não foi alterada. Use suas credenciais existentes para
           entrar.
@@ -158,7 +136,7 @@ function DemoPasswordReset() {
     );
 
   return (
-    <Stack component="form" noValidate onSubmit={submit} spacing={3} aria-busy={busy}>
+    <Stack component="form" noValidate onSubmit={submit} spacing={2.5} aria-busy={busy}>
       {resetPassword.isError && (
         <Alert
           severity="error"
@@ -187,6 +165,7 @@ function DemoPasswordReset() {
             endAdornment: (
               <InputAdornment position="end">
                 <Button
+                  size="small"
                   disabled={busy}
                   aria-pressed={visible}
                   onClick={() => setVisible((value) => !value)}
@@ -199,13 +178,7 @@ function DemoPasswordReset() {
           },
         }}
       />
-      <Button
-        type="submit"
-        variant="contained"
-        size="large"
-        disabled={busy || context.isFetching}
-        sx={{ py: 1.8 }}
-      >
+      <Button type="submit" variant="contained" size="large" disabled={busy || context.isFetching}>
         {busy ? (
           <>
             <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />

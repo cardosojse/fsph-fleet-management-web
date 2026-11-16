@@ -1,23 +1,18 @@
-import { Button, Container, Stack, Typography } from '@mui/material';
+import { Button, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
+
+import { PublicLayout } from '@/shared/layout/PublicLayout';
 
 export function NotFoundPage() {
   return (
-    <Container component="main" maxWidth="sm" sx={{ py: 12 }}>
-      <Stack spacing={2} sx={{ alignItems: 'flex-start' }}>
-        <Typography color="primary" sx={{ fontWeight: 700 }} variant="overline">
-          Erro 404
-        </Typography>
-        <Typography component="h1" variant="h3">
-          Página não encontrada
-        </Typography>
-        <Typography color="text.secondary">
-          O endereço informado não existe neste sistema.
-        </Typography>
-        <Button component={Link} to="/" variant="contained">
-          Voltar ao início
-        </Button>
-      </Stack>
-    </Container>
+    <PublicLayout eyebrow="Erro 404" title="Página não encontrada">
+      <Typography color="text.secondary" sx={{ mb: 3 }}>
+        O endereço informado não existe neste sistema. Verifique o link ou volte para a página
+        inicial.
+      </Typography>
+      <Button component={Link} to="/" variant="contained">
+        Voltar ao início
+      </Button>
+    </PublicLayout>
   );
 }
