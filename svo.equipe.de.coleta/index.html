@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVO | Equipe de Coleta</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div><strong>SVO</strong><span>Sistema de Verificação</span></div>
+      </div>
+
+      <div class="profile">
+        <div class="avatar">EC</div>
+        <div><strong>Equipe de Coleta</strong><span>Equipe operacional</span></div>
+      </div>
+
+      <nav class="navigation" aria-label="Menu principal">
+        <p class="nav-label">MENU PRINCIPAL</p>
+        <a class="nav-link active" href="#painel"><span class="nav-icon">▦</span> Painel da equipe</a>
+        <a class="nav-link" href="#ordens"><span class="nav-icon">▤</span> Ordens de coleta <span class="nav-count" id="menuCount">4</span></a>
+        <a class="nav-link" href="#notificacoes"><span class="nav-icon">♧</span> Notificações <span class="nav-dot" id="menuDot"></span></a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="help-card">
+          <div class="help-icon">?</div>
+          <strong>Precisa de ajuda?</strong>
+          <span>Entre em contato com a administração do SVO.</span>
+        </div>
+        <div class="sidebar-footer">SVO · Ambiente operacional</div>
+      </div>
+    </aside>
+
+    <main class="main-content" id="painel">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Abrir menu">☰</button>
+        <div class="breadcrumb">Início <span>/</span> Equipe de coleta</div>
+        <div class="top-actions">
+          <button class="icon-button notification-button" id="notificationBell" aria-label="Ver notificações">
+            ♧<span class="bell-indicator" id="bellIndicator"></span>
+          </button>
+          <div class="user-mini"><div class="avatar small">EC</div><span>Equipe de coleta</span></div>
+        </div>
+      </header>
+
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">ÁREA OPERACIONAL</p>
+          <h1>Painel da equipe de coleta</h1>
+          <p class="subtitle">Acompanhe as ordens destinadas à sua equipe e atualize o andamento das coletas.</p>
+        </div>
+        <div class="date-chip"><span>◷</span><span id="currentDate"></span></div>
+      </section>
+
+      <section class="stats-grid" aria-label="Resumo das ordens">
+        <article class="stat-card">
+          <div class="stat-top"><span>Total de ordens</span><span class="stat-icon blue">▤</span></div>
+          <strong id="totalCount">4</strong><small>Ordens alocadas à equipe</small>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Pendentes</span><span class="stat-icon amber">◷</span></div>
+          <strong id="pendingCount">2</strong><small>Aguardando início ou coleta</small>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Em andamento</span><span class="stat-icon purple">➜</span></div>
+          <strong id="progressCount">1</strong><small>Coletas em operação</small>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Entregues</span><span class="stat-icon green">✓</span></div>
+          <strong id="deliveredCount">1</strong><small>Ordens finalizadas</small>
+        </article>
+      </section>
+
+      <section class="content-panel" id="ordens">
+        <div class="panel-heading">
+          <div>
+            <h2>Ordens de coleta</h2>
+            <p>Visualize e gerencie as solicitações atribuídas à sua equipe.</p>
+          </div>
+          <button class="secondary-button" id="simulateOrder">＋ Simular nova ordem</button>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Buscar por ordem, tipo ou endereço..."></label>
+          <select id="statusFilter" aria-label="Filtrar por status">
+            <option value="">Todos os status</option>
+            <option>Alocada</option><option>A caminho</option><option>Coletado</option>
+            <option>Em transporte</option><option>Entregue</option>
+          </select>
+          <select id="typeFilter" aria-label="Filtrar por tipo de coleta">
+            <option value="">Todos os tipos</option>
+            <option>Coleta de corpo</option><option>Material biológico</option><option>Outra coleta</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>ORDEM / TIPO</th><th>LOCAL DA COLETA</th><th>AGENDAMENTO</th><th>RESPONSÁVEL / VEÍCULO</th><th>STATUS</th><th>AÇÃO</th>
+            </tr></thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+          <div class="empty-state hidden" id="emptyState">Nenhuma ordem encontrada com os filtros selecionados.</div>
+        </div>
+        <div class="table-foot"><span id="resultCount">Exibindo 4 ordens</span><span>Os dados desta demonstração são fictícios.</span></div>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="content-panel progress-panel">
+          <div class="panel-heading compact">
+            <div><h2>Fluxo de atendimento</h2><p>Etapas previstas para cada ordem.</p></div>
+          </div>
+          <div class="workflow">
+            <div class="workflow-step"><span class="step-number">1</span><div><strong>Alocada</strong><small>Ordem atribuída à equipe</small></div></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step"><span class="step-number">2</span><div><strong>A caminho</strong><small>Deslocamento até o local</small></div></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step"><span class="step-number">3</span><div><strong>Coletado</strong><small>Coleta realizada</small></div></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step"><span class="step-number">4</span><div><strong>Em transporte</strong><small>Deslocamento até o destino</small></div></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step"><span class="step-number">5</span><div><strong>Entregue</strong><small>Entrega concluída</small></div></div>
+          </div>
+        </article>
+
+        <article class="content-panel notifications-panel" id="notificacoes">
+          <div class="panel-heading compact">
+            <div><h2>Notificações recentes</h2><p>Avisos direcionados à sua equipe.</p></div>
+            <button class="text-button" id="markRead">Marcar como lidas</button>
+          </div>
+          <div id="notificationList" class="notification-list"></div>
+        </article>
+      </section>
+      <footer class="page-footer">SVO · Sistema de Verificação de Óbito <span>Protótipo de interface — dados demonstrativos</span></footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="orderModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-header"><div><p class="eyebrow">DETALHES DA SOLICITAÇÃO</p><h2 id="modalTitle">Ordem de coleta</h2></div><button class="close-button" id="closeModal" aria-label="Fechar">×</button></div>
+      <div id="modalBody"></div>
+      <div class="modal-actions"><button class="secondary-button" id="cancelModal">Fechar</button><button class="primary-button" id="saveStatus">Salvar atualização</button></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+    <div class="modal create-modal">
+      <div class="modal-header"><div><p class="eyebrow">NOVA SOLICITAÇÃO</p><h2 id="createTitle">Simular nova ordem</h2></div><button class="close-button" id="closeCreate" aria-label="Fechar">×</button></div>
+      <form id="createForm">
+        <div class="create-grid">
+          <label class="create-field">Tipo de coleta<select name="type" required><option value="">Selecione...</option><option>Coleta de corpo</option><option>Material biológico</option><option>Outra coleta</option></select></label>
+          <label class="create-field">Data e horário<input type="datetime-local" name="scheduled" required></label>
+          <label class="create-field">Rua / Avenida<input name="street" required maxlength="120" placeholder="Ex.: Rua das Flores"></label>
+          <label class="create-field">Número<input name="number" required maxlength="15" placeholder="Ex.: 120"></label>
+          <label class="create-field">Bairro<input name="district" required maxlength="80" placeholder="Ex.: Centro"></label>
+          <label class="create-field">Cidade<input name="city" required maxlength="80" value="Aracaju"></label>
+          <label class="create-field">Estado<input name="state" required maxlength="2" value="SE" placeholder="SE"></label>
+          <label class="create-field">Equipe responsável<input name="team" required maxlength="80" value="Equipe Alfa"></label>
+          <label class="create-field">Veículo / placa<input name="vehicle" required maxlength="30" value="QWE-2A34"></label>
+          <label class="create-field full">Observações<textarea name="notes" rows="3" maxlength="500" placeholder="Informações adicionais (opcional)"></textarea></label>
+        </div>
+        <div class="modal-actions"><button type="button" class="secondary-button" id="cancelCreate">Cancelar</button><button type="submit" class="primary-button">Criar ordem</button></div>
+      </form>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="script.js"></script>
+</body>
+</html>

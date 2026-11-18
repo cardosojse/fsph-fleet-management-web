@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVO | Desempenho da Frota</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <h2>SVO</h2>
+            <p class="side-subtitle">Gestão operacional</p>
+            <nav aria-label="Navegação principal">
+                <a href="#resumo" class="active">▦ &nbsp; Visão geral</a>
+                <a href="#indicadores">◷ &nbsp; Indicadores</a>
+                <a href="#ordens">▤ &nbsp; Ordens e tempos</a>
+                <a href="#alertas">⚑ &nbsp; Alertas</a>
+            </nav>
+            <div class="sidebar-footer">GF &nbsp; Gestor de frota</div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <span>Início / Frota / <strong>Desempenho</strong></span>
+                <span class="user">Gestor de frota</span>
+            </header>
+
+            <section id="resumo" class="intro">
+                <div>
+                    <span class="eyebrow">MONITORAMENTO OPERACIONAL</span>
+                    <h1>Desempenho da frota</h1>
+                    <p>Analise os tempos entre solicitação, coleta e entrega das ordens do SVO.</p>
+                </div>
+                <button id="resetData" class="outline-button">Restaurar dados de exemplo</button>
+            </section>
+
+            <section class="filters panel" aria-label="Filtros do painel">
+                <label>Equipe
+                    <select id="teamFilter"><option value="">Todas as equipes</option></select>
+                </label>
+                <label>Veículo
+                    <select id="vehicleFilter"><option value="">Todos os veículos</option></select>
+                </label>
+                <label>Data inicial
+                    <input id="startDate" type="date">
+                </label>
+                <label>Data final
+                    <input id="endDate" type="date">
+                </label>
+                <button id="clearFilters" class="outline-button">Limpar filtros</button>
+            </section>
+
+            <section id="indicadores" class="stats" aria-label="Indicadores de tempo">
+                <article class="stat panel">
+                    <span>Solicitação → Coleta</span>
+                    <strong id="avgCollection">—</strong>
+                    <small>Tempo médio até a coleta</small>
+                </article>
+                <article class="stat panel">
+                    <span>Coleta → Entrega</span>
+                    <strong id="avgTransport">—</strong>
+                    <small>Tempo médio de transporte</small>
+                </article>
+                <article class="stat panel">
+                    <span>Solicitação → Entrega</span>
+                    <strong id="avgTotal">—</strong>
+                    <small>Tempo médio total</small>
+                </article>
+                <article class="stat panel">
+                    <span>Ordens acima da meta</span>
+                    <strong id="lateCount">0</strong>
+                    <small id="lateDescription">Meta: 180 minutos</small>
+                </article>
+            </section>
+
+            <section class="two-columns">
+                <article class="panel chart-panel">
+                    <div class="panel-title">
+                        <div>
+                            <h2>Tempo médio por etapa</h2>
+                            <p>Considera apenas etapas concluídas.</p>
+                        </div>
+                    </div>
+                    <div class="bar-chart" id="stageChart"></div>
+                </article>
+                <article class="panel chart-panel">
+                    <div class="panel-title">
+                        <div>
+                            <h2>Desempenho por equipe</h2>
+                            <p>Tempo médio total das ordens entregues.</p>
+                        </div>
+                    </div>
+                    <div class="bar-chart" id="teamChart"></div>
+                </article>
+            </section>
+
+            <section class="panel orders-panel" id="ordens">
+                <div class="panel-title">
+                    <div>
+                        <h2>Tempos por ordem de serviço</h2>
+                        <p>Confira os horários e o desempenho de cada atendimento.</p>
+                    </div>
+                    <button id="addOrderButton" class="primary-button">+ Simular ordem</button>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ORDEM</th>
+                                <th>EQUIPE / VEÍCULO</th>
+                                <th>SOLICITAÇÃO</th>
+                                <th>COLETA</th>
+                                <th>ENTREGA</th>
+                                <th>ATÉ COLETA</th>
+                                <th>TRANSPORTE</th>
+                                <th>TOTAL</th>
+                                <th>AVALIAÇÃO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersBody"></tbody>
+                    </table>
+                </div>
+                <p class="footnote" id="resultSummary"></p>
+            </section>
+
+            <section class="panel alerts-panel" id="alertas">
+                <div class="panel-title">
+                    <div>
+                        <h2>Alertas de desempenho</h2>
+                        <p>Ordens entregues acima da meta e ordens abertas que já ultrapassaram a meta.</p>
+                    </div>
+                    <label class="target-field">Meta total (min)
+                        <input id="targetMinutes" type="number" min="1" value="180">
+                    </label>
+                </div>
+                <div id="alertsList" class="alerts-list"></div>
+            </section>
+            <footer>Protótipo SVO · Dados fictícios para demonstração · Atualização local</footer>
+        </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalHeading">
+        <form class="modal" id="orderForm">
+            <div class="modal-header">
+                <div>
+                    <span class="eyebrow">SIMULAÇÃO</span>
+                    <h2 id="modalHeading">Nova ordem de serviço</h2>
+                </div>
+                <button type="button" id="closeModal" class="close-button" aria-label="Fechar">×</button>
+            </div>
+            <p class="form-help">Preencha os horários para calcular os tempos automaticamente. Coleta e entrega podem ficar em branco.</p>
+            <div class="form-grid">
+                <label>Número da ordem<input id="newId" required maxlength="40" placeholder="OS-2026-0200"></label>
+                <label>Equipe<input id="newTeam" required maxlength="60" placeholder="Equipe Alfa"></label>
+                <label>Veículo<input id="newVehicle" required maxlength="30" placeholder="SVO-0001"></label>
+                <label>Solicitação<input id="newRequest" type="datetime-local" required></label>
+                <label>Coleta<input id="newCollection" type="datetime-local"></label>
+                <label>Entrega<input id="newDelivery" type="datetime-local"></label>
+            </div>
+            <p class="error-message" id="formError" role="alert"></p>
+            <div class="modal-actions">
+                <button type="button" id="cancelModal" class="outline-button">Cancelar</button>
+                <button type="submit" class="primary-button">Adicionar ordem</button>
+            </div>
+        </form>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
