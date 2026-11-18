@@ -1,48 +1,95 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+﻿import { fireEvent, screen, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
+import { mockFleetApi, renderFleetPage } from '@/test/fleet-api';
 
-function renderPage() {
-  const router = createMemoryRouter([{ path: '/dashboard', element: <DashboardPage /> }], {
-    initialEntries: ['/dashboard'],
-  });
-  return render(<RouterProvider router={router} />);
+const server = mockFleetApi(
+  http.get('*/api/v1/trip-requests', () =>
+    HttpResponse.json([{ status: 'PENDING', createdAt: new Date().toISOString() }]),
+  ),
+  http.get('*/api/v1/vehicles', () =>
+    HttpResponse.json([
+      { id: 'carro', model: 'Van da API', active: true, available: true, sectorId: 'svo' },
+    ]),
+  ),
+  http.get('*/api/v1/trips', () =>
+    HttpResponse.json({
+      totalPages: 1,
+      content: [
+        {
+          id: 'viagem-001',
+          vehicleId: 'carro',
+          driverId: 'm1',
+          status: 'OPEN',
+          startedAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  ),
+  http.get('*/api/v1/drivers', () => HttpResponse.json([{ id: 'm1', name: 'Motorista da API' }])),
+  http.get('*/api/v1/sectors', () =>
+    HttpResponse.json([
+      { id: 'svo', name: 'SVO' },
+      { id: 'adm', name: 'Administrativo' },
+    ]),
+  ),
+  http.get('*/api/v1/fuelings/consumption', () =>
+    HttpResponse.json({
+      vehicles: [{ vehicleId: 'carro', vehiclePlate: 'ABC1D23', averageKmPerLiter: 10 }],
+    }),
+  ),
+  http.get('*/api/v1/fuelings', () => HttpResponse.json([])),
+  http.get('*/api/v1/maintenance-schedules/alerts', () =>
+    HttpResponse.json([
+      { id: 'alerta', vehiclePlate: 'ABC1D23', serviceName: 'Revisão', notes: 'Trocar filtro' },
+    ]),
+  ),
+);
+
+function renderPage(authenticated = true) {
+  renderFleetPage(<DashboardPage />, '/dashboard', authenticated);
 }
 
 describe('DashboardPage', () => {
-  it('renderiza indicadores, filtros e os dados demonstrativos do dashboard', () => {
-    renderPage();
+  it('abre diretamente e exibe a resposta da API quando a sessão é exigida', async () => {
+    server.use(
+      http.get('*/api/v1/vehicles', ({ request }) => {
+        expect(request.headers.get('Authorization')).toBeNull();
+        return HttpResponse.json({}, { status: 401 });
+      }),
+    );
+    renderPage(false);
     expect(screen.getByRole('heading', { name: 'Visão geral da frota' })).toBeInTheDocument();
-    expect(screen.getByText('Disponíveis')).toBeInTheDocument();
-    expect(screen.getByText('Triagens pendentes')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Filtrar por setor' })).toHaveValue('all');
-    expect(screen.getByRole('combobox', { name: 'Filtrar por período' })).toHaveValue('today');
-    expect(screen.getAllByRole('row')).toHaveLength(4);
+    expect(screen.queryByRole('button', { name: 'Entrar' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('A API exige uma sessão válida para exibir estes dados.'),
+    ).toBeInTheDocument();
   });
 
-  it('filtra a tabela localmente por setor e período', () => {
+  it('calcula indicadores, relaciona a viagem e filtra pelo setor do veículo', async () => {
     renderPage();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por setor' }), {
-      target: { value: 'SVO' },
+    expect(await screen.findByText('Motorista da API')).toBeInTheDocument();
+    const card = screen.getByText('Em rota', { exact: true }).closest('article');
+    expect(card).toHaveTextContent('1');
+    expect(await screen.findByText('10 km/l')).toBeInTheDocument();
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Filtrar por setor' }), {
+      target: { value: 'adm' },
     });
-    expect(screen.getAllByRole('row')).toHaveLength(3);
-    expect(screen.queryByText('ADM-2026-0105')).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por período' }), {
-      target: { value: 'all' },
-    });
-    expect(screen.getAllByRole('row')).toHaveLength(4);
-    expect(screen.getByText('SVO-2026-0398')).toBeInTheDocument();
+    expect(
+      screen.getByText('Nenhuma viagem aberta para os filtros selecionados.'),
+    ).toBeInTheDocument();
   });
 
-  it('abre detalhes demonstrativos de um alerta e permite fechar o diálogo', async () => {
+  it('exibe os detalhes de alerta e mantém os demais painéis quando um endpoint dá erro', async () => {
+    server.use(http.get('*/api/v1/fuelings', () => HttpResponse.json({}, { status: 403 })));
     renderPage();
-    const alertCard = screen.getByText('Van 01 — Documentos vencidos').closest('article');
-    expect(alertCard).not.toBeNull();
-    fireEvent.click(within(alertCard as HTMLElement).getByRole('button', { name: 'Abrir' }));
-    expect(screen.getByRole('dialog')).toHaveTextContent('CRLV vencido 30/09/2026');
-    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(
+      await screen.findByText('Sua conta não tem permissão para acessar estes dados.'),
+    ).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Abrir' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Trocar filtro')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }));
   });
 });

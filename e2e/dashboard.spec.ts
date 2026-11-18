@@ -11,6 +11,19 @@ const viewports = [
 ];
 
 test('dashboard se adapta aos viewports e mantém os filtros acessíveis', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem('fsph-fleet-management.access-token', 'token-de-teste');
+  });
+  await page.route('**/api/v1/**', async (route) => {
+    const endpoint = new URL(route.request().url()).pathname;
+    const data =
+      {
+        '/api/v1/auth/me': { name: 'Conta de teste', role: 'ADMIN' },
+        '/api/v1/trips': { content: [], totalPages: 0 },
+        '/api/v1/fuelings/consumption': { vehicles: [] },
+      }[endpoint] ?? [];
+    await route.fulfill({ json: data });
+  });
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.goto('/dashboard');

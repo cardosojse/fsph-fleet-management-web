@@ -1,17 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 
+import { ApiFeedback } from '@/shared/api/ApiFeedback';
+import { useApiSession } from '@/shared/api/use-api-session';
+import { apiClient, apiData } from '@/shared/api/client';
+import type { components } from '@/shared/api/generated/schema';
 import { DashboardSidebar } from './components/DashboardSidebar';
-import {
-  consumptionByVehicle,
-  dashboardAlerts,
-  fleetIndicators,
-  fleetRequests,
-  fuelByVehicle,
-  operationIndicators,
-  requestsPerDay,
-} from './data/dashboardMock';
-import type { DashboardAlert, DashboardPeriod, DashboardSector } from './data/dashboardMock';
 import './dashboard.css';
 
 function MetricIcon({ name }: { name: string }) {
@@ -79,325 +74,456 @@ function FilterSelect<T extends string>({
   );
 }
 
-function FleetTable({
-  sector,
-  period,
-  onSectorChange,
-  onPeriodChange,
-}: {
-  sector: DashboardSector | 'all';
-  period: DashboardPeriod;
-  onSectorChange: (value: DashboardSector | 'all') => void;
-  onPeriodChange: (value: DashboardPeriod) => void;
-}) {
-  const filteredRequests = useMemo(
-    () =>
-      fleetRequests.filter((request) => {
-        if (sector !== 'all' && request.sector !== sector) return false;
-        if (period === 'today' && request.date !== '2026-10-06') return false;
-        if (period === 'week' && request.date < '2026-09-30') return false;
-        return true;
-      }),
-    [sector, period],
+const number = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
+const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const dateKey = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' });
+const time = new Intl.DateTimeFormat('pt-BR', {
+  timeStyle: 'short',
+  timeZone: 'America/Sao_Paulo',
+});
+
+type Trip = components['schemas']['TripResponse'];
+type FleetAlert = { id: string; title: string; description: string };
+
+function formatNumber(value: number | null | undefined, unit = '') {
+  return value == null ? '—' : number.format(value) + unit;
+}
+
+function formatDate(value?: string) {
+  return value?.split('-').reverse().join('/') || '—';
+}
+
+async function loadOpenTrips(signal: AbortSignal) {
+  const trips: Trip[] = [];
+  let pages = 1;
+  for (let page = 0; page < pages; page += 1) {
+    const result = apiData(
+      await apiClient.GET('/api/v1/trips', { signal, params: { query: { page, size: 100 } } }),
+    );
+    trips.push(...(result.content ?? []).filter((trip) => trip.status === 'OPEN'));
+    pages = result.totalPages ?? 1;
+  }
+  return trips;
+}
+
+function DashboardContent() {
+  const [period, setPeriod] = useState<'today' | 'week' | 'all'>('today');
+  const [sector, setSector] = useState('');
+  const [selectedAlert, setSelectedAlert] = useState<FleetAlert>();
+  const requests = useQuery({
+    queryKey: ['trip-requests'],
+    queryFn: async ({ signal }) =>
+      apiData(await apiClient.GET('/api/v1/trip-requests', { signal })),
+  });
+  const vehicles = useQuery({
+    queryKey: ['vehicles'],
+    queryFn: async ({ signal }) => apiData(await apiClient.GET('/api/v1/vehicles', { signal })),
+  });
+  const trips = useQuery({
+    queryKey: ['open-trips'],
+    queryFn: ({ signal }) => loadOpenTrips(signal),
+  });
+  const drivers = useQuery({
+    queryKey: ['drivers'],
+    queryFn: async ({ signal }) => apiData(await apiClient.GET('/api/v1/drivers', { signal })),
+  });
+  const sectors = useQuery({
+    queryKey: ['sectors'],
+    queryFn: async ({ signal }) => apiData(await apiClient.GET('/api/v1/sectors', { signal })),
+  });
+  const consumption = useQuery({
+    queryKey: ['fuel-consumption'],
+    queryFn: async ({ signal }) =>
+      apiData(await apiClient.GET('/api/v1/fuelings/consumption', { signal })),
+  });
+  const fuelings = useQuery({
+    queryKey: ['fuelings'],
+    queryFn: async ({ signal }) => apiData(await apiClient.GET('/api/v1/fuelings', { signal })),
+  });
+  const maintenanceAlerts = useQuery({
+    queryKey: ['maintenance-alerts'],
+    queryFn: async ({ signal }) =>
+      apiData(await apiClient.GET('/api/v1/maintenance-schedules/alerts', { signal })),
+  });
+
+  const openVehicleIds = new Set(trips.data?.map((trip) => trip.vehicleId));
+  const fleet = (vehicles.data ?? []).filter((vehicle) => vehicle.active);
+  const maintenance = fleet.filter((vehicle) => vehicle.inMaintenance);
+  const onRoute = fleet.filter(
+    (vehicle) => !vehicle.inMaintenance && openVehicleIds.has(vehicle.id),
   );
+  const available = fleet.filter(
+    (vehicle) => !vehicle.inMaintenance && vehicle.available && !openVehicleIds.has(vehicle.id),
+  );
+  const fleetReady = Boolean(vehicles.data && trips.data);
+  const indicators = [
+    {
+      label: 'Disponíveis',
+      value: fleetReady ? available.length : undefined,
+      icon: 'grid',
+      color: 'blue',
+    },
+    {
+      label: 'Em rota',
+      value: fleetReady ? onRoute.length : undefined,
+      icon: 'route',
+      color: 'green',
+    },
+    {
+      label: 'Em manutenção',
+      value: vehicles.data ? maintenance.length : undefined,
+      icon: 'tool',
+      color: 'orange',
+    },
+    {
+      label: 'Indisponíveis',
+      value: fleetReady
+        ? fleet.length - onRoute.length - maintenance.length - available.length
+        : undefined,
+      icon: 'car',
+      color: 'red',
+    },
+  ];
+
+  const today = new Date();
+  const dayKeys = Array.from({ length: 7 }, (_, index) =>
+    dateKey.format(today.getTime() - (6 - index) * 86_400_000),
+  );
+  const todayKey = dateKey.format(today);
+  const requestsByDay = new Map<string, number>();
+  for (const request of requests.data ?? []) {
+    if (!request.createdAt) continue;
+    const day = dateKey.format(new Date(request.createdAt));
+    requestsByDay.set(day, (requestsByDay.get(day) ?? 0) + 1);
+  }
+  const maxRequests = Math.max(1, ...dayKeys.map((day) => requestsByDay.get(day) ?? 0));
+  const vehicleById = new Map(vehicles.data?.map((vehicle) => [vehicle.id, vehicle]));
+  const driverById = new Map(drivers.data?.map((driver) => [driver.id, driver]));
+  const sectorById = new Map(sectors.data?.map((item) => [item.id, item.name]));
+  const visibleTrips = (trips.data ?? []).filter((trip) => {
+    if (sector && vehicleById.get(trip.vehicleId)?.sectorId !== sector) return false;
+    if (period === 'all') return true;
+    const startDay = trip.startedAt ? dateKey.format(new Date(trip.startedAt)) : '';
+    return period === 'today'
+      ? startDay === todayKey
+      : startDay >= (dayKeys[0] ?? todayKey) && startDay <= todayKey;
+  });
+  const latestFuelings = [...(fuelings.data ?? [])]
+    .sort((a, b) => (b.fueledOn ?? '').localeCompare(a.fueledOn ?? ''))
+    .slice(0, 5);
+  const alerts: FleetAlert[] = (maintenanceAlerts.data ?? []).map((alert) => ({
+    id: alert.id ?? '',
+    title:
+      [alert.vehiclePlate, alert.serviceName].filter(Boolean).join(' — ') || 'Alerta de manutenção',
+    description:
+      [
+        alert.targetDate && 'Previsão: ' + formatDate(alert.targetDate),
+        alert.targetOdometerKm != null &&
+          'Odômetro previsto: ' + formatNumber(alert.targetOdometerKm, ' km'),
+        alert.notes,
+      ]
+        .filter(Boolean)
+        .join(' • ') || 'Consulte o plano de manutenção.',
+  }));
 
   return (
-    <section aria-labelledby="active-routes-heading" className="dashboard-panel routes-panel">
-      <div className="panel-heading panel-heading-wrap">
-        <div>
-          <h2 id="active-routes-heading">Rotas ativas</h2>
-          <p>Execução, ocupação e status atualizados</p>
-        </div>
-        <div className="table-filters">
-          <FilterSelect
-            label="Filtrar por setor"
-            value={sector}
-            onChange={onSectorChange}
-            options={[
-              { value: 'all', label: 'Todos os setores' },
-              { value: 'SVO', label: 'SVO' },
-              { value: 'Administrativo', label: 'Administrativo' },
-            ]}
-          />
-          <FilterSelect
-            label="Filtrar por período"
-            value={period}
-            onChange={onPeriodChange}
-            options={[
-              { value: 'today', label: 'Período: Hoje' },
-              { value: 'week', label: 'Período: Últimos 7 dias' },
-              { value: 'all', label: 'Período: Todo o período' },
-            ]}
-          />
-        </div>
+    <>
+      <div className="fleet-kpis">
+        {indicators.map((indicator) => (
+          <article className="fleet-kpi" key={indicator.label}>
+            <div className="kpi-caption">
+              <span className={'kpi-icon ' + indicator.color}>
+                <MetricIcon name={indicator.icon} />
+              </span>
+              <span>Frota ativa</span>
+            </div>
+            <strong className="kpi-value">{indicator.value ?? '—'}</strong>
+            <span className="kpi-label">{indicator.label}</span>
+          </article>
+        ))}
       </div>
-      <div className="table-scroll">
-        <table className="fleet-table">
-          <thead>
-            <tr>
-              <th>Protocolo</th>
-              <th>Setor</th>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Motorista</th>
-              <th>Veículo</th>
-              <th>Horário</th>
-              <th>Status</th>
-              <th>Ocupação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRequests.length ? (
-              filteredRequests.map((request) => (
-                <tr key={request.protocol}>
-                  <td className="protocol-cell">{request.protocol}</td>
-                  <td>{request.sector}</td>
-                  <td>{request.origin}</td>
-                  <td>{request.destination}</td>
-                  <td>{request.driver}</td>
-                  <td>{request.vehicle}</td>
-                  <td>{request.time}</td>
-                  <td>
+      {vehicles.isError && (
+        <ApiFeedback error={vehicles.error} retry={() => void vehicles.refetch()} />
+      )}
+      <div className="dashboard-overview-grid">
+        <section className="dashboard-panel triage-panel" aria-labelledby="triage-heading">
+          <div className="panel-heading">
+            <h2 id="triage-heading">Triagem e alocação</h2>
+          </div>
+          {requests.isError && (
+            <ApiFeedback error={requests.error} retry={() => void requests.refetch()} />
+          )}
+          <div className="triage-stats">
+            {[
+              [
+                'Triagens pendentes',
+                requests.data?.filter((request) => request.status === 'PENDING').length,
+              ],
+              [
+                'Aloc. pendentes',
+                requests.data?.filter((request) => request.status === 'APPROVED').length,
+              ],
+              ['Solicitações hoje', requests.data && (requestsByDay.get(todayKey) ?? 0)],
+              ['Viagens abertas', trips.data?.length],
+            ].map(([label, value]) => (
+              <div className="triage-stat" key={label}>
+                <span>{label}</span>
+                <strong>{value ?? '—'}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section
+          className="dashboard-panel request-chart-panel"
+          aria-labelledby="requests-chart-heading"
+        >
+          <div className="panel-heading">
+            <h2 id="requests-chart-heading">Solicitações / dia</h2>
+            <span>Últimos 7 dias</span>
+          </div>
+          {requests.isPending && <p role="status">Carregando solicitações…</p>}
+          {requests.isError && <p>Não foi possível carregar a série.</p>}
+          {requests.data && (
+            <div
+              className="request-chart"
+              role="img"
+              aria-label={dayKeys
+                .map((day) => formatDate(day) + ': ' + (requestsByDay.get(day) ?? 0))
+                .join(', ')}
+            >
+              {dayKeys.map((day) => (
+                <div className="chart-column" key={day}>
+                  <div className="chart-track">
                     <span
-                      className={`status-badge ${request.status === 'Em execução' ? 'in-progress' : 'completed'}`}
-                    >
-                      {request.status}
-                    </span>
-                  </td>
-                  <td>{request.occupancy}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="empty-table" colSpan={9}>
-                  Nenhuma rota para os filtros selecionados.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      className={'chart-bar' + (day === todayKey ? ' highlight' : '')}
+                      style={{ height: ((requestsByDay.get(day) ?? 0) / maxRequests) * 100 + '%' }}
+                    />
+                  </div>
+                  <small>{formatDate(day).slice(0, 5)}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        <section className="dashboard-panel status-panel" aria-labelledby="fleet-status-heading">
+          <h2 id="fleet-status-heading">Frota por status • {vehicles.data ? fleet.length : '—'}</h2>
+          {indicators.map(({ label, value }) => (
+            <div className="status-meter" key={label}>
+              <span>
+                {label} · {value ?? '—'}
+              </span>
+              <div>
+                <i style={{ width: ((value ?? 0) / Math.max(1, fleet.length)) * 100 + '%' }} />
+              </div>
+            </div>
+          ))}
+        </section>
       </div>
-    </section>
+      <section className="dashboard-panel routes-panel" aria-labelledby="active-routes-heading">
+        <div className="panel-heading panel-heading-wrap">
+          <div>
+            <h2 id="active-routes-heading">Viagens em andamento</h2>
+            <p>
+              Protocolo, coleta, destino e ocupação dependem do vínculo entre viagem e solicitação
+              na API.
+            </p>
+          </div>
+          <div className="table-filters">
+            {sectors.data && vehicles.data && (
+              <FilterSelect
+                label="Filtrar por setor"
+                value={sector}
+                onChange={setSector}
+                options={[
+                  { value: '', label: 'Todos os setores' },
+                  ...sectors.data.flatMap((item) =>
+                    item.id && item.name ? [{ value: item.id, label: item.name }] : [],
+                  ),
+                ]}
+              />
+            )}
+            <FilterSelect
+              label="Filtrar por período"
+              value={period}
+              onChange={setPeriod}
+              options={[
+                { value: 'today', label: 'Período: Hoje' },
+                { value: 'week', label: 'Período: Últimos 7 dias' },
+                { value: 'all', label: 'Período: Todo o período' },
+              ]}
+            />
+          </div>
+        </div>
+        {trips.isPending && <p role="status">Carregando viagens…</p>}
+        {trips.isError && <ApiFeedback error={trips.error} retry={() => void trips.refetch()} />}
+        {drivers.isError && (
+          <ApiFeedback error={drivers.error} retry={() => void drivers.refetch()} />
+        )}
+        {sectors.isError && (
+          <ApiFeedback error={sectors.error} retry={() => void sectors.refetch()} />
+        )}
+        {trips.data && (
+          <div className="table-scroll">
+            <table className="fleet-table live-trips-table">
+              <thead>
+                <tr>
+                  {['Viagem', 'Setor do veículo', 'Motorista', 'Veículo', 'Início', 'Status'].map(
+                    (label) => (
+                      <th key={label}>{label}</th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleTrips.map((trip) => {
+                  const vehicle = vehicleById.get(trip.vehicleId);
+                  return (
+                    <tr key={trip.id}>
+                      <td className="protocol-cell" title={trip.id}>
+                        {trip.id?.slice(0, 8) ?? '—'}
+                      </td>
+                      <td>{sectorById.get(vehicle?.sectorId) ?? '—'}</td>
+                      <td>{driverById.get(trip.driverId)?.name ?? '—'}</td>
+                      <td>{[vehicle?.model, vehicle?.plate].filter(Boolean).join(' • ') || '—'}</td>
+                      <td>
+                        {trip.startedAt
+                          ? formatDate(dateKey.format(new Date(trip.startedAt))) +
+                            ' ' +
+                            time.format(new Date(trip.startedAt))
+                          : '—'}
+                      </td>
+                      <td>
+                        <span className="status-badge in-progress">Em execução</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {visibleTrips.length === 0 && (
+                  <tr>
+                    <td className="empty-table" colSpan={6}>
+                      Nenhuma viagem aberta para os filtros selecionados.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <div className="dashboard-bottom-grid">
+        <section className="dashboard-panel compact-panel">
+          <div className="panel-heading">
+            <h2>Consumo / veículo</h2>
+            <strong className="mini-unit">km/l</strong>
+          </div>
+          {consumption.isError && (
+            <ApiFeedback error={consumption.error} retry={() => void consumption.refetch()} />
+          )}
+          {consumption.isPending && <p role="status">Carregando consumo…</p>}
+          {consumption.data && !consumption.data.vehicles?.length && (
+            <p>Sem registros de consumo.</p>
+          )}
+          {consumption.data?.vehicles?.slice(0, 5).map((item) => (
+            <div className="vehicle-metric" key={item.vehicleId}>
+              <span>
+                <strong>{item.vehiclePlate ?? item.vehicleModel ?? 'Veículo'}</strong>
+                <small>{formatNumber(item.totalMeasuredDistanceKm, ' km medidos')}</small>
+              </span>
+              <b>{formatNumber(item.averageKmPerLiter, ' km/l')}</b>
+            </div>
+          ))}
+        </section>
+        <section className="dashboard-panel compact-panel">
+          <div className="panel-heading">
+            <h2>Abastecimentos recentes</h2>
+          </div>
+          {fuelings.isError && (
+            <ApiFeedback error={fuelings.error} retry={() => void fuelings.refetch()} />
+          )}
+          {fuelings.isPending && <p role="status">Carregando abastecimentos…</p>}
+          {fuelings.data?.length === 0 && <p>Sem abastecimentos registrados.</p>}
+          {latestFuelings.map((item) => (
+            <div className="vehicle-metric" key={item.id}>
+              <span>
+                <strong>{item.vehiclePlate ?? item.vehicleModel ?? 'Veículo'}</strong>
+                <small>
+                  {formatDate(item.fueledOn)} • {formatNumber(item.liters, ' L')}
+                </small>
+              </span>
+              <b>{item.totalValue == null ? '—' : currency.format(item.totalValue)}</b>
+            </div>
+          ))}
+        </section>
+        <section className="dashboard-panel alerts-panel">
+          <div className="panel-heading">
+            <h2>Alertas de manutenção</h2>
+          </div>
+          {maintenanceAlerts.isError && (
+            <ApiFeedback
+              error={maintenanceAlerts.error}
+              retry={() => void maintenanceAlerts.refetch()}
+            />
+          )}
+          {maintenanceAlerts.isPending && <p role="status">Carregando alertas…</p>}
+          {maintenanceAlerts.data?.length === 0 && <p>Nenhum alerta de manutenção.</p>}
+          {alerts.map((alert) => (
+            <article className="alert-row" key={alert.id}>
+              <span className="kpi-icon orange">
+                <MetricIcon name="tool" />
+              </span>
+              <div>
+                <strong>{alert.title}</strong>
+                <small>{alert.description}</small>
+              </div>
+              <button className="text-action" type="button" onClick={() => setSelectedAlert(alert)}>
+                Abrir
+              </button>
+            </article>
+          ))}
+        </section>
+      </div>
+      <Dialog
+        open={Boolean(selectedAlert)}
+        onClose={() => setSelectedAlert(undefined)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{selectedAlert?.title}</DialogTitle>
+        <DialogContent>{selectedAlert?.description}</DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedAlert(undefined)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
 export function DashboardPage() {
-  const [sector, setSector] = useState<DashboardSector | 'all'>('all');
-  const [period, setPeriod] = useState<DashboardPeriod>('today');
-  const [selectedAlert, setSelectedAlert] = useState<DashboardAlert | null>(null);
-
+  const session = useApiSession();
   return (
-    <div className="dashboard-shell">
-      <DashboardSidebar />
+    <div className="dashboard-shell dashboard-page">
+      <DashboardSidebar session={session ?? null} />
       <main className="dashboard-main">
         <header className="dashboard-header">
           <div className="dashboard-breadcrumb">
-            <span>SVO</span>
-            <span>/</span>
-            <span>Frota administrativa</span>
-            <span>/</span>
-            <strong>Dashboard</strong>
+            <span>SVO</span> / <span>Frota administrativa</span> / <strong>Dashboard</strong>
           </div>
           <h1>Visão geral da frota</h1>
-          <p>
-            Período: 30/09–06/10/2026 <span>•</span> Atualização: 06/10/2026 14:20
-          </p>
-          <div className="dashboard-user-bar">
-            <div className="user-summary">
-              <span className="user-summary-badge">AC</span>
-              <span>
-                <strong>Ana Coordenadora</strong>
-                <small>Gestora / Administrativo + SVO</small>
-              </span>
-            </div>
-            <span className="scope-badge">Âmbito: Administrativo + SVO</span>
-            <button
-              className="exit-button"
-              disabled
-              title="Autenticação não implementada"
-              type="button"
-            >
-              Sair
-            </button>
-          </div>
-        </header>
-
-        <div className="fleet-kpis">
-          {fleetIndicators.map((indicator) => (
-            <article className="fleet-kpi" key={indicator.label}>
-              <div className="kpi-caption">
-                <span className={`kpi-icon ${indicator.color}`}>
-                  <MetricIcon name={indicator.icon} />
-                </span>
-                <span>{indicator.caption}</span>
+          <p>Indicadores operacionais da frota</p>
+          {session && (
+            <div className="dashboard-user-bar">
+              <div className="user-summary">
+                <span className="user-summary-badge">{session.initials}</span>
+                <strong>{session.name}</strong>
               </div>
-              <strong className="kpi-value">{indicator.value}</strong>
-              <span className="kpi-label">{indicator.label}</span>
-            </article>
-          ))}
-        </div>
-
-        <div className="dashboard-overview-grid">
-          <section aria-labelledby="triage-heading" className="dashboard-panel triage-panel">
-            <div className="panel-heading">
-              <h2 id="triage-heading">Triagem e alocação</h2>
-              <span className="updated-label">Atualizado às 14:20</span>
-            </div>
-            <div className="triage-stats">
-              {operationIndicators.map((item) => (
-                <div className="triage-stat" key={item.label}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="requests-chart-heading"
-            className="dashboard-panel request-chart-panel"
-          >
-            <div className="panel-heading">
-              <h2 id="requests-chart-heading">Solicitações / dia</h2>
-              <span>30/09–06/10</span>
-            </div>
-            <div
-              aria-label="Solicitações diárias de 30 de setembro a 6 de outubro"
-              className="request-chart"
-              role="img"
-            >
-              {requestsPerDay.map((item) => (
-                <div className="chart-column" key={item.day}>
-                  <span
-                    className={item.day === '05/10' ? 'chart-bar highlight' : 'chart-bar'}
-                    style={{ height: `${Math.round((item.count / 20) * 100)}%` }}
-                    title={`${item.count} solicitações`}
-                  />
-                  <small>{item.day}</small>
-                </div>
-              ))}
-            </div>
-            <p className="chart-note">Série histórica demonstrativa: 30/09–06/10/2026.</p>
-          </section>
-
-          <section aria-labelledby="fleet-status-heading" className="dashboard-panel status-panel">
-            <h2 id="fleet-status-heading">
-              Frota por status <span>• 10</span>
-            </h2>
-            {fleetIndicators.map((item) => (
-              <div className="status-meter" key={item.label}>
-                <span>
-                  {item.label} · {item.value}
-                </span>
-                <div>
-                  <i
-                    className={item.color}
-                    style={{ width: `${(Number(item.value) / 5) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </section>
-        </div>
-
-        <FleetTable
-          sector={sector}
-          period={period}
-          onSectorChange={setSector}
-          onPeriodChange={setPeriod}
-        />
-
-        <div className="dashboard-bottom-grid">
-          <section aria-labelledby="consumption-heading" className="dashboard-panel compact-panel">
-            <div className="panel-heading">
-              <h2 id="consumption-heading">Consumo / veículo</h2>
-              <strong className="mini-unit">km/l</strong>
-            </div>
-            {consumptionByVehicle.map((item) => (
-              <div className="vehicle-metric" key={item.vehicle}>
-                <span>
-                  <strong>{item.vehicle}</strong>
-                  <small>{item.distance}</small>
-                </span>
-                <b>{item.consumption}</b>
-              </div>
-            ))}
-          </section>
-          <section aria-labelledby="fuel-heading" className="dashboard-panel compact-panel">
-            <div className="panel-heading">
-              <h2 id="fuel-heading">Abastecimento</h2>
-              <strong className="mini-unit">R$ / L</strong>
-            </div>
-            {fuelByVehicle.map((item) => (
-              <div className="vehicle-metric" key={item.vehicle}>
-                <span>
-                  <strong>{item.vehicle}</strong>
-                  <small>{item.detail}</small>
-                </span>
-                <b>{item.amount}</b>
-              </div>
-            ))}
-          </section>
-          <section aria-labelledby="alerts-heading" className="dashboard-panel alerts-panel">
-            <div className="panel-heading">
-              <h2 id="alerts-heading">Alertas</h2>
-              <button
-                className="text-action"
-                onClick={() => setSelectedAlert(dashboardAlerts[0]!)}
-                type="button"
-              >
-                Abrir detalhes
+              <button type="button" className="exit-button" onClick={session.logout}>
+                Sair
               </button>
             </div>
-            {dashboardAlerts.map((alert) => (
-              <article className="alert-row" key={alert.title}>
-                <span aria-hidden="true" className="alert-icon">
-                  <svg viewBox="0 0 20 20">
-                    <path d="M3 12V9l2-4h9l3 4v4h-2M3 12h11M6 15h.01M14 15h.01" />
-                    <circle cx="6" cy="14" r="2" />
-                    <circle cx="14" cy="14" r="2" />
-                    <path d="M8 3h4" />
-                  </svg>
-                </span>
-                <div>
-                  <strong>{alert.title}</strong>
-                  <small>{alert.description}</small>
-                </div>
-                <button
-                  className="text-action"
-                  onClick={() => setSelectedAlert(alert)}
-                  type="button"
-                >
-                  Abrir
-                </button>
-              </article>
-            ))}
-          </section>
-        </div>
-        <footer className="dashboard-footer">
-          <span>Dados demonstrativos • Sem integração com serviços</span>
-          <span>FSPH / Frota administrativa</span>
-        </footer>
+          )}
+        </header>
+        <DashboardContent />
       </main>
-
-      <Dialog
-        open={Boolean(selectedAlert)}
-        onClose={() => setSelectedAlert(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Detalhe do alerta</DialogTitle>
-        <DialogContent>
-          <div className="alert-dialog-content">
-            <strong>{selectedAlert?.title}</strong>
-            <p>{selectedAlert?.description}</p>
-            <span>Informação demonstrativa; nenhuma ação operacional foi realizada.</span>
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedAlert(null)}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 }

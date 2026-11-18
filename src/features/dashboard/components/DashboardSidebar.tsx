@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import type { ApiUser } from '@/shared/api/use-api-session';
 
 type IconName =
   | 'dashboard'
@@ -10,17 +11,38 @@ type IconName =
   | 'maintenance'
   | 'users';
 
-const navigation: Array<{ label: string; icon: IconName; href?: string; page?: string }> = [
-  { label: 'Dashboard', icon: 'dashboard', href: '/dashboard', page: 'dashboard' },
-  { label: 'Atendimento SVO', icon: 'atendimento', href: '/atendimento-svo', page: 'atendimento' },
-  { label: 'Solicitações', icon: 'requests', href: '/solicitacoes', page: 'requests' },
-  { label: 'Ordens', icon: 'routes' },
-  { label: 'Rotas', icon: 'routes' },
+type NavigationItem = { label: string; icon: IconName; href?: string; page?: string };
+
+const atendimento: NavigationItem = {
+  label: 'Atendimento SVO',
+  icon: 'atendimento',
+  href: '/atendimento-svo',
+  page: 'atendimento',
+};
+
+const dashboard: NavigationItem = {
+  label: 'Dashboard',
+  icon: 'dashboard',
+  href: '/dashboard',
+  page: 'dashboard',
+};
+const requests: NavigationItem = {
+  label: 'Solicitações',
+  icon: 'requests',
+  href: '/solicitacoes',
+  page: 'requests',
+};
+const routes: NavigationItem = { label: 'Rotas', icon: 'routes' };
+const orders: NavigationItem = { label: 'Ordens', icon: 'vehicle' };
+const fleetNavigation: NavigationItem[] = [
   { label: 'Veículos', icon: 'vehicle' },
   { label: 'Condutores', icon: 'person' },
   { label: 'Manutenções', icon: 'maintenance' },
   { label: 'Usuários', icon: 'users', href: '/usuarios', page: 'users' },
 ];
+
+const dashboardNavigation = [dashboard, requests, routes, orders, ...fleetNavigation, atendimento];
+const sharedNavigation = [dashboard, atendimento, requests, orders, routes, ...fleetNavigation];
 
 function NavIcon({ name }: { name: IconName }) {
   const shapes: Record<IconName, React.ReactNode> = {
@@ -93,14 +115,20 @@ function NavIcon({ name }: { name: IconName }) {
   );
 }
 
-export function DashboardSidebar({ active = 'dashboard' }: { active?: string }) {
+export function DashboardSidebar({
+  active = 'dashboard',
+  session,
+}: {
+  active?: string;
+  session?: ApiUser | null;
+}) {
   return (
     <aside className="dashboard-sidebar">
       <Link aria-label="SVO, início" className="dashboard-brand" to="/">
         SVO
       </Link>
       <nav aria-label="Navegação principal" className="dashboard-navigation">
-        {navigation.map((item) =>
+        {(active === 'dashboard' ? dashboardNavigation : sharedNavigation).map((item) =>
           item.href ? (
             <Link
               aria-current={item.page === active ? 'page' : undefined}
@@ -124,18 +152,31 @@ export function DashboardSidebar({ active = 'dashboard' }: { active?: string }) 
           ),
         )}
       </nav>
-      <section aria-label="Perfil demonstrativo" className="dashboard-profile">
-        <span className="dashboard-avatar">AC</span>
-        <strong>Ana Coordenadora</strong>
-        <span>
-          Gestora
-          <br />
-          Administrativo + SVO
-        </span>
-        <button disabled title="Autenticação não implementada" type="button">
-          Sair
-        </button>
-      </section>
+      {session ? (
+        <section aria-label="Perfil" className="dashboard-profile">
+          <span className="dashboard-avatar">{session.initials}</span>
+          <strong>{session.name}</strong>
+          {session.role && <span>{session.role}</span>}
+          <button onClick={session.logout} type="button">
+            Sair
+          </button>
+        </section>
+      ) : (
+        session === undefined && (
+          <section aria-label="Perfil demonstrativo" className="dashboard-profile">
+            <span className="dashboard-avatar">AC</span>
+            <strong>Ana Coordenadora</strong>
+            <span>
+              Gestora
+              <br />
+              Administrativo + SVO
+            </span>
+            <button disabled title="Autenticação não implementada" type="button">
+              Sair
+            </button>
+          </section>
+        )
+      )}
     </aside>
   );
 }

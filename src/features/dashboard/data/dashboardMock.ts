@@ -12,6 +12,7 @@ export interface FleetRequestRow {
   date: string;
   status: string;
   occupancy: string;
+  isFull?: boolean;
 }
 
 export interface DashboardAlert {
@@ -23,8 +24,22 @@ export interface DashboardAlert {
 export const fleetIndicators = [
   { label: 'Disponíveis', value: 5, caption: '50% da frota', icon: 'grid', color: 'blue' },
   { label: 'Em rota', value: 3, caption: '3 em execução', icon: 'route', color: 'green' },
-  { label: 'Em manutenção', value: 1, caption: '1 veículo', icon: 'tool', color: 'orange' },
-  { label: 'Indisponíveis', value: 1, caption: '1 veículo', icon: 'car', color: 'red' },
+  {
+    label: 'Em manutenção',
+    statusLabel: 'Manutenção',
+    value: 1,
+    caption: '1 veículo',
+    icon: 'tool',
+    color: 'orange',
+  },
+  {
+    label: 'Indisponíveis',
+    statusLabel: 'Indisponível',
+    value: 1,
+    caption: '1 veículo',
+    icon: 'car',
+    color: 'red',
+  },
 ] as const;
 
 export const operationIndicators = [
@@ -68,6 +83,7 @@ export const fleetRequests: FleetRequestRow[] = [
     date: '2026-10-06',
     status: 'Em execução',
     occupancy: '1/1 Lotado',
+    isFull: true,
   },
   {
     protocol: 'ADM-2026-0105',
@@ -108,14 +124,14 @@ export const fleetRequests: FleetRequestRow[] = [
 ];
 
 export const consumptionByVehicle = [
-  { vehicle: 'Van 02', distance: '300 km + 30 L', consumption: '10,0 km/L' },
-  { vehicle: 'S10', distance: '240 km + 30 L', consumption: '8,0 km/L' },
+  { vehicle: 'Van 02', distance: '300 km ÷ 30 L', consumption: '10,0 km/l' },
+  { vehicle: 'S10', distance: '240 km ÷ 30 L', consumption: '8,0 km/l' },
   { vehicle: 'Carro 04', distance: 'Sem dados recentes', consumption: '—' },
 ] as const;
 
 export const fuelByVehicle = [
   { vehicle: 'Van 02', detail: 'Diesel • 30 L • R$6/L', amount: 'R$180,00' },
-  { vehicle: 'S10', detail: '240 km + 30 L', amount: 'R$380,00' },
+  { vehicle: 'S10', detail: '240 km ÷ 30 L', amount: 'R$380,00' },
   { vehicle: 'Carro 04', detail: 'Sem dados recentes', amount: '—' },
 ] as const;
 

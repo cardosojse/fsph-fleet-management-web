@@ -222,6 +222,41 @@ export const routeStops: RouteStopRecord[] = [
   },
 ];
 
+export const routeDisplay: Readonly<
+  Partial<
+    Record<
+      string,
+      {
+        protocol: string;
+        driver: string;
+        vehicle: string;
+        occupancy: string;
+        full?: boolean;
+      }
+    >
+  >
+> = {
+  'ROT-0089': {
+    protocol: 'SVO-2026-0402',
+    driver: 'Carlos Silva',
+    vehicle: 'Van 02',
+    occupancy: '1/2',
+  },
+  'ROT-0088': {
+    protocol: 'SVO-2026-0401',
+    driver: 'Marcos Oliveira',
+    vehicle: 'Carro 04',
+    occupancy: '1/1',
+    full: true,
+  },
+  'ROT-0090': {
+    protocol: 'ADM-2026-0105',
+    driver: 'João Santos',
+    vehicle: 'S10',
+    occupancy: '3/4',
+  },
+};
+
 export const dutyTeams: DutyTeam[] = [
   {
     name: 'SVO Alfa',

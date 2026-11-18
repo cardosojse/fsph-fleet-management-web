@@ -1,136 +1,97 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+﻿import { fireEvent, screen, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 
 import { AtendimentoSvoPage } from '@/features/atendimento-svo/AtendimentoSvoPage';
-import { transports } from '@/features/atendimento-svo/data/atendimentoSvoMock';
+import { mockFleetApi, renderFleetPage } from '@/test/fleet-api';
+
+const request = {
+  id: 'b27ca111-20ee-42a5-a6ae-571523da2268',
+  requesterSectorName: 'SVO',
+  status: 'PENDING',
+  requesterName: 'Pessoa solicitante',
+  origin: 'Hospital da API',
+  destination: 'Sede SVO',
+  createdAt: '2026-11-18T17:00:00Z',
+  purpose: 'Coleta',
+};
+
+const server = mockFleetApi(
+  http.get('*/api/v1/trip-requests', () =>
+    HttpResponse.json([
+      request,
+      { ...request, id: 'outro-id', requesterSectorName: 'Administrativo', origin: 'Fora do SVO' },
+    ]),
+  ),
+  http.get('*/api/v1/trip-requests/:id', () => HttpResponse.json(request)),
+  http.get('*/api/v1/svo/shifts/current', () =>
+    HttpResponse.json([
+      { id: 'plantao', teamName: 'Equipe retornada pela API', vehiclePlate: 'ABC1D23' },
+    ]),
+  ),
+);
 
 function renderPage() {
-  const router = createMemoryRouter(
-    [{ path: '/atendimento-svo', element: <AtendimentoSvoPage /> }],
-    { initialEntries: ['/atendimento-svo'] },
-  );
-  return render(<RouterProvider router={router} />);
-}
-
-function queue() {
-  return screen.getByRole('region', { name: 'Fila de atendimento' });
-}
-function selectRequest(protocol: string) {
-  fireEvent.click(within(queue()).getByText(protocol));
+  renderFleetPage(<AtendimentoSvoPage />, '/atendimento-svo');
 }
 
 describe('AtendimentoSvoPage', () => {
-  it('renderiza a fila, detalhes e painéis de operação', () => {
-    renderPage();
+  it('abre a fila e o plantão sem formulário de login', async () => {
+    renderFleetPage(<AtendimentoSvoPage />, '/atendimento-svo', false);
     expect(screen.getByRole('heading', { name: 'Atendimento SVO' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Fila de atendimento' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Equipe de plantão' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Ações da solicitação selecionada' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Rotas ativas • 3 no sistema' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Entrar' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Fila de atendimento' })).toBeInTheDocument();
+    expect(await screen.findByText('Equipe retornada pela API')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Aprovar solicitação' })).not.toBeInTheDocument();
   });
 
-  it('filtra localmente por texto e estado demonstrativo', async () => {
+  it('carrega detalhes, filtra a fila por setor e exibe plantões reais', async () => {
     renderPage();
-    fireEvent.change(
-      within(queue()).getByRole('textbox', { name: 'Buscar protocolo, coleta ou destino' }),
-      { target: { value: 'Hospital Municipal' } },
-    );
-    expect(within(queue()).getByText('SVO-2026-0406')).toBeInTheDocument();
-    expect(within(queue()).queryByText('SVO-2026-0405')).not.toBeInTheDocument();
-    fireEvent.mouseDown(within(queue()).getByRole('combobox', { name: 'Status' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Aguardando análise' }));
-    expect(within(queue()).getByText('SVO-2026-0406')).toBeInTheDocument();
-    expect(within(queue()).queryByText('SVO-2026-0404')).not.toBeInTheDocument();
+    const queue = await screen.findByRole('region', { name: 'Fila de atendimento' });
+    expect(within(queue).getByText('Hospital da API')).toBeInTheDocument();
+    expect(within(queue).queryByText('Fora do SVO')).not.toBeInTheDocument();
+    expect(await screen.findByText('Pessoa solicitante')).toBeInTheDocument();
+    expect(await screen.findByText('Equipe retornada pela API')).toBeInTheDocument();
+    fireEvent.change(within(queue).getByRole('textbox'), { target: { value: 'Outro local' } });
+    expect(within(queue).queryByText('Hospital da API')).not.toBeInTheDocument();
   });
 
-  it('aprova a solicitação selecionada, atualiza fila, detalhes, indicador e histórico e preserva ao alternar', async () => {
-    renderPage();
-    selectRequest('SVO-2026-0404');
-    fireEvent.click(screen.getByRole('button', { name: 'Aprovar solicitação' }));
-    expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Nenhum transporte, ordem, rota ou equipe será alterado.',
+  it('envia aprovação com observação e atualiza o detalhe', async () => {
+    const updated = { ...request, status: 'APPROVED', decisionNotes: 'Liberada pelo plantão' };
+    server.use(
+      http.patch('*/api/v1/trip-requests/:id/approve', async ({ params, request: req }) => {
+        expect(params.id).toEqual(request.id);
+        expect(await req.json()).toEqual({ decisionNotes: 'Liberada pelo plantão' });
+        server.use(http.get('*/api/v1/trip-requests', () => HttpResponse.json([updated])));
+        return HttpResponse.json(updated);
+      }),
     );
-    fireEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirmar aprovação' }),
-    );
-    expect(within(queue()).getAllByText('Aprovada')).toHaveLength(2);
-    expect(screen.getByRole('region', { name: 'SVO-2026-0404' })).toHaveTextContent('Aprovada');
-    const summary = screen.getByRole('region', { name: 'Resumo da operação' });
-    expect(summary.querySelectorAll('.summary-item')[0]).toHaveTextContent('2');
-    expect(summary.querySelectorAll('.summary-item')[1]).toHaveTextContent('2');
-    expect(transports.find((transport) => transport.id === 'tr-0404')?.status).toBe('PENDING');
-    expect(screen.getByText('Solicitação aprovada')).toBeInTheDocument();
-    expect(
-      screen.getByText('Aprovação registrada. Nenhuma ordem ou rota foi criada.'),
-    ).toBeInTheDocument();
-    selectRequest('SVO-2026-0406');
-    selectRequest('SVO-2026-0404');
-    expect(within(queue()).getAllByText('Aprovada')).toHaveLength(2);
-    fireEvent.mouseDown(within(queue()).getByRole('combobox', { name: 'Status' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Aprovada' }));
-    expect(within(queue()).getByText('SVO-2026-0404')).toBeInTheDocument();
-    expect(within(queue()).queryByText('SVO-2026-0406')).not.toBeInTheDocument();
-  });
-
-  it('exige justificativa para negar e altera somente a solicitação escolhida', () => {
     renderPage();
-    selectRequest('SVO-2026-0406');
-    fireEvent.click(screen.getByRole('button', { name: 'Negar solicitação' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Aprovar solicitação' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('button', { name: 'Confirmar negativa' })).toBeDisabled();
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Justificativa *' }), {
-      target: { value: 'Dados demonstrativos insuficientes' },
+    fireEvent.change(within(dialog).getByLabelText('Observações da decisão'), {
+      target: { value: 'Liberada pelo plantão' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar negativa' }));
-    expect(within(queue()).getByText('Negada')).toBeInTheDocument();
-    expect(screen.getAllByText('Negada')).toHaveLength(2);
-    expect(screen.getByText('Justificativa da negativa:')).toBeInTheDocument();
-    expect(within(queue()).getByText('Negada')).toBeInTheDocument();
-    expect(within(queue()).getByText('SVO-2026-0404')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Solicitação negada • Dados demonstrativos insuficientes/),
-    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByText('Solicitação aprovada.')).toBeInTheDocument();
+    expect(await screen.findByText('Liberada pelo plantão')).toBeInTheDocument();
   });
 
-  it('valida complemento, associa o texto, atualiza fila e preserva histórico ao alternar', () => {
+  it('exige justificativa e mantém o diálogo aberto se a recusa falhar', async () => {
+    server.use(
+      http.patch('*/api/v1/trip-requests/:id/reject', async ({ request: req }) => {
+        expect(await req.json()).toEqual({ rejectionReason: 'Informações divergentes' });
+        return HttpResponse.json({ detail: 'A solicitação já foi atualizada.' }, { status: 409 });
+      }),
+    );
     renderPage();
-    selectRequest('SVO-2026-0404');
-    fireEvent.click(screen.getByRole('button', { name: 'Solicitar complemento' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Negar solicitação' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('button', { name: 'Enviar pedido' })).toBeDisabled();
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Informação faltante *' }), {
-      target: { value: 'Confirmar número do imóvel' },
+    const confirm = within(dialog).getByRole('button', { name: 'Confirmar' });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/Justificativa/), {
+      target: { value: 'Informações divergentes' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Enviar pedido' }));
-    expect(within(queue()).getAllByText('Aguardando complemento')).toHaveLength(2);
-    expect(screen.getByText('Complemento solicitado')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'Complementos (1)' }));
-    expect(screen.getByText('Confirmar número do imóvel')).toBeInTheDocument();
-    selectRequest('SVO-2026-0405');
-    selectRequest('SVO-2026-0404');
-    fireEvent.click(screen.getByRole('tab', { name: 'Complementos (1)' }));
-    expect(screen.getByText('Confirmar número do imóvel')).toBeInTheDocument();
-  });
-
-  it('salva análise na fonte única e mantém conteúdo após alternar solicitações; permite anexos informativos', () => {
-    renderPage();
-    selectRequest('SVO-2026-0406');
-    const analysis = screen.getByRole('textbox', { name: 'Análise do atendente' });
-    fireEvent.change(analysis, { target: { value: 'Análise local revisada para teste.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar análise' }));
-    expect(screen.getByText('Análise salva no estado demonstrativo local.')).toBeInTheDocument();
-    selectRequest('SVO-2026-0404');
-    selectRequest('SVO-2026-0406');
-    expect(screen.getByRole('textbox', { name: 'Análise do atendente' })).toHaveValue(
-      'Análise local revisada para teste.',
-    );
-    fireEvent.click(screen.getByRole('tab', { name: 'Anexos (0)' }));
-    expect(screen.getByRole('tabpanel')).toHaveTextContent(
-      'Anexos não disponíveis neste protótipo.',
-    );
+    fireEvent.click(confirm);
+    expect(await within(dialog).findByText('A solicitação já foi atualizada.')).toBeInTheDocument();
   });
 });

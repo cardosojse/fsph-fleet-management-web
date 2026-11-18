@@ -2,10 +2,15 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 import { routes } from '@/app/router';
+import { AppProviders } from '@/app/providers/AppProviders';
 
 async function renderPage() {
   const router = createMemoryRouter(routes, { initialEntries: ['/usuarios'] });
-  render(<RouterProvider router={router} />);
+  render(
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>,
+  );
   await screen.findByRole('heading', { name: 'Credenciamento do colaborador' });
   return router;
 }
