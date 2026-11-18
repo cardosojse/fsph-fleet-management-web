@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <title>
+   SVO | Monitoramento de Ordens
+  </title>
+  <link href="style.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <div class="layout">
+   <aside class="sidebar">
+    <h2>
+     SVO
+    </h2>
+    <p class="side-caption">
+     Sistema de Verificação de Óbito
+    </p>
+    <nav>
+     <a class="active" href="#">
+      ▦   Monitoramento
+     </a>
+     <a href="#ordens">
+      ▤   Ordens
+     </a>
+     <a href="#alertas">
+      ⚑   Alertas
+     </a>
+    </nav>
+    <div class="side-user">
+     <div class="avatar">
+      AS
+     </div>
+     <strong>
+      Atendente SVO
+     </strong>
+     <small>
+      Central de atendimento
+     </small>
+    </div>
+   </aside>
+   <main>
+    <header>
+     <span>
+      Início   /   Atendimento   /   Monitoramento
+     </span>
+     <span class="live">
+      <i>
+      </i>
+      Painel atualizado automaticamente
+     </span>
+    </header>
+    <section class="heading">
+     <div>
+      <span class="eyebrow">
+       Centra
+      </span>
+      <h1>
+       Monitoramento 
+      </h1>
+      <p>
+       Acompanhe 
+      </p>
+     </div>
+     <button class="outline" id="addDemo">
+      + Simular nova ordem
+     </button>
+    </section>
+    <section class="stats">
+     <article>
+      <span>
+       Total de ordens
+      </span>
+      <strong id="total">
+       0
+      </strong>
+      <small>
+       Ordens cadastradas
+      </small>
+     </article>
+     <article>
+      <span>
+       Pendentes
+      </span>
+      <strong id="pending">
+       0
+      </strong>
+      <small>
+       Alocadas ou a caminho
+      </small>
+     </article>
+     <article>
+      <span>
+       Em andamento
+      </span>
+      <strong id="progress">
+       0
+      </strong>
+      <small>
+       Coletadas ou em transporte
+      </small>
+     </article>
+     <article class="danger-stat">
+      <span>
+       Com atraso
+      </span>
+      <strong id="late">
+       0
+      </strong>
+      <small>
+       Exigem atenção
+      </small>
+     </article>
+     <article>
+      <span>
+       Entregues
+      </span>
+      <strong id="done">
+       0
+      </strong>
+      <small>
+       Operações finalizadas
+      </small>
+     </article>
+    </section>
+    <section class="panel" id="alertas">
+     <div class="panel-title">
+      <div>
+       <h2>
+        Alertas de atraso
+       </h2>
+       <p>
+        Ordens não concluídas após o prazo previsto.
+       </p>
+      </div>
+      <span class="counter" id="alertCount">
+       0 alertas
+      </span>
+     </div>
+     <div class="alerts" id="alertList">
+     </div>
+    </section>
+    <section class="panel" id="ordens">
+     <div class="panel-title">
+      <div>
+       <h2>
+        Todas as ordens
+       </h2>
+       <p>
+        Visão consolidada das equipes operacionais.
+       </p>
+      </div>
+      <span class="counter" id="results">
+       0 ordens
+      </span>
+     </div>
+     <div class="filters">
+      <input aria-label="Buscar ordens" id="search" placeholder="Buscar ordem, endereço ou equipe..."/>
+      <select id="statusFilter">
+       <option value="">
+        Todos os status
+       </option>
+       <option>
+        Alocada
+       </option>
+       <option>
+        A caminho
+       </option>
+       <option>
+        Coletado
+       </option>
+       <option>
+        Em transporte
+       </option>
+       <option>
+        Entregue
+       </option>
+      </select>
+      <select id="delayFilter">
+       <option value="">
+        Todas as situações
+       </option>
+       <option value="late">
+        Atrasadas
+       </option>
+       <option value="ok">
+        Dentro do prazo / concluídas
+       </option>
+      </select>
+     </div>
+     <div class="table-scroll">
+      <table>
+       <thead>
+        <tr>
+         <th>
+          ORDEM / TIPO
+         </th>
+         <th>
+          LOCAL
+         </th>
+         <th>
+          EQUIPE
+         </th>
+         <th>
+          PRAZO PREVISTO
+         </th>
+         <th>
+          STATUS
+         </th>
+         <th>
+          SITUAÇÃO
+         </th>
+         <th>
+          AÇÃO
+         </th>
+        </tr>
+       </thead>
+       <tbody id="tbody">
+       </tbody>
+      </table>
+     </div>
+    </section>
+    <footer>
+     Protótipo SVO · Dados demonstrativos · Atualização local a cada 15 segundos
+    </footer>
+   </main>
+  </div>
+  <div class="overlay hidden" id="overlay">
+   <section aria-labelledby="modalTitle" aria-modal="true" class="modal" role="dialog">
+    <div class="modal-head">
+     <div>
+      <span class="eyebrow">
+       DETALHES E INTERVENÇÃO
+      </span>
+      <h2 id="modalTitle">
+      </h2>
+     </div>
+     <button aria-label="Fechar" class="x" id="close">
+      ×
+     </button>
+    </div>
+    <div id="details">
+    </div>
+    <label for="intervention">
+     Registrar providência do atendente
+    </label>
+    <textarea id="intervention" placeholder="Ex.: Contato com a equipe para verificar previsão de chegada..." rows="3"></textarea>
+    <div class="modal-actions">
+     <button class="outline" id="cancel">
+      Fechar
+     </button>
+     <button class="primary" id="save">
+      Registrar intervenção
+     </button>
+    </div>
+   </section>
+  </div>
+  <div class="toast" id="toast" role="status">
+  </div>
+  <script src="script.js">
+  </script>
+ </body>
+</html>
+
