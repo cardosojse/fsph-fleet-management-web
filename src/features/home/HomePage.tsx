@@ -1,4 +1,6 @@
-import { Box, Chip, Container, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
+
+import { Link } from 'react-router-dom';
 
 const foundations = [
   'React + TypeScript',
@@ -32,6 +34,14 @@ export function HomePage() {
               Infraestrutura do frontend pronta. As próximas entregas podem evoluir por domínio sem
               acoplar regras de negócio aos componentes compartilhados.
             </Typography>
+            <Button
+              component={Link}
+              to="/relatorios"
+              variant="outlined"
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Relat?rios
+            </Button>
             <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }} useFlexGap>
               {foundations.map((foundation) => (
                 <Chip key={foundation} label={foundation} variant="outlined" />
