@@ -1,20 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Container,
-  InputAdornment,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert, Button, CircularProgress, InputAdornment, Stack, TextField } from '@mui/material';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link as RouterLink } from 'react-router-dom';
 import { z } from 'zod';
+
+import { PublicLayout } from '@/shared/layout/PublicLayout';
 
 import { demoCredentials, simulateLogin } from './mocks/login';
 
@@ -51,120 +43,101 @@ export function LoginPage() {
   });
 
   return (
-    <Box sx={{ minHeight: '100vh' }}>
-      <Box
-        component="header"
-        sx={{ bgcolor: '#0f172a', color: 'white', px: { xs: 3, md: 6 }, py: { xs: 2.5, md: 4 } }}
-      >
-        <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
-          <Typography sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 800 }}>SVO</Typography>
-          <Box sx={{ borderLeft: '1px solid #334155', pl: 3 }}>
-            <Typography sx={{ fontWeight: 600, fontSize: { xs: 14, sm: 20 } }}>
-              Frota administrativa • Serviço de Verificação de Óbito
-            </Typography>
-            <Typography sx={{ fontSize: { xs: 13, sm: 18 }, color: '#cbd5e1' }}>
-              Acesso institucional
-            </Typography>
-          </Box>
+    <PublicLayout
+      title="Entrar no sistema"
+      description="Use sua conta institucional. Seu perfil e setor são definidos pela conta, sem seleção no login."
+    >
+      <Alert severity="info" sx={{ mb: 3, fontSize: 13 }}>
+        Modo demonstrativo: use {demoCredentials.email} e a senha {demoCredentials.password}. A API
+        de login ainda não está integrada. A simulação não inicia uma sessão autenticada.
+      </Alert>
+      {login.isSuccess ? (
+        <Stack spacing={2}>
+          <Alert severity="success" role="status">
+            Simulação concluída. Nenhuma sessão autenticada foi criada.
+          </Alert>
+          <Button component={RouterLink} to="/dashboard/demo" variant="contained" size="large">
+            Abrir dashboard demonstrativo
+          </Button>
+          <Button variant="outlined" onClick={() => login.reset()}>
+            Voltar ao login
+          </Button>
         </Stack>
-      </Box>
-      <Container component="main" maxWidth={false} sx={{ maxWidth: 704, py: { xs: 4, md: 9 } }}>
-        <Typography color="primary" sx={{ fontWeight: 700, mb: 1 }}>
-          SVO / ACESSO
-        </Typography>
-        <Typography component="h1" variant="h1" sx={{ color: '#0f172a', mb: 2 }}>
-          Entrar no sistema
-        </Typography>
-        <Typography color="text.secondary" sx={{ fontSize: { xs: 18, sm: 22 }, mb: 4 }}>
-          Use sua conta institucional. Seu perfil e setor são definidos pela conta, sem seleção no
-          login.
-        </Typography>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Modo demonstrativo: use {demoCredentials.email} e a senha {demoCredentials.password}. A
-          API de login ainda não está integrada. A simulação não inicia uma sessão autenticada.
-        </Alert>
-        {login.isSuccess ? (
-          <Stack spacing={3}>
-            <Alert severity="success" role="status">
-              Simulação concluída. Nenhuma sessão autenticada foi criada.
+      ) : (
+        <Stack component="form" noValidate onSubmit={submit} spacing={2.5} aria-busy={busy}>
+          {login.isError && (
+            <Alert
+              severity="error"
+              action={
+                <Button color="inherit" size="small" disabled={busy} onClick={() => void submit()}>
+                  Tentar novamente
+                </Button>
+              }
+            >
+              {login.error.message}
             </Alert>
-            <Button component={RouterLink} to="/dashboard/demo" variant="contained">
-              Abrir dashboard demonstrativo
-            </Button>
-            <Button variant="outlined" onClick={() => login.reset()}>
-              Voltar ao login
-            </Button>
-          </Stack>
-        ) : (
-          <Stack component="form" noValidate onSubmit={submit} spacing={3} aria-busy={busy}>
-            {login.isError && (
-              <Alert
-                severity="error"
-                action={
-                  <Button color="inherit" disabled={busy} onClick={() => void submit()}>
-                    Tentar novamente
-                  </Button>
-                }
-              >
-                {login.error.message}
-              </Alert>
+          )}
+          <TextField
+            label="E-mail institucional"
+            placeholder="nome@orgao.gov.br"
+            type="email"
+            autoComplete="username"
+            required
+            fullWidth
+            disabled={busy}
+            {...register('email')}
+            error={!!errors.email}
+            helperText={errors.email?.message}
+          />
+          <TextField
+            label="Senha"
+            placeholder="Informe sua senha"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            fullWidth
+            disabled={busy}
+            {...register('password')}
+            error={!!errors.password}
+            helperText={errors.password?.message}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button
+                      size="small"
+                      disabled={busy}
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-pressed={showPassword}
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      {showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    </Button>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Button type="submit" variant="contained" size="large" disabled={busy}>
+            {busy ? (
+              <>
+                <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                Verificando…
+              </>
+            ) : (
+              'Entrar'
             )}
-            <TextField
-              label="E-mail institucional"
-              placeholder="nome@orgao.gov.br"
-              type="email"
-              autoComplete="username"
-              required
-              fullWidth
-              disabled={busy}
-              {...register('email')}
-              error={!!errors.email}
-              helperText={errors.email?.message}
-            />
-            <TextField
-              label="Senha"
-              placeholder="Informe sua senha"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
-              required
-              fullWidth
-              disabled={busy}
-              {...register('password')}
-              error={!!errors.password}
-              helperText={errors.password?.message}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Button
-                        disabled={busy}
-                        onClick={() => setShowPassword((visible) => !visible)}
-                        aria-pressed={showPassword}
-                        sx={{ whiteSpace: 'nowrap' }}
-                      >
-                        {showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                      </Button>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-            <Button type="submit" variant="contained" size="large" disabled={busy} sx={{ py: 1.8 }}>
-              {busy ? (
-                <>
-                  <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
-                  Verificando…
-                </>
-              ) : (
-                'Entrar'
-              )}
-            </Button>
-            <Button component={RouterLink} to="/recuperar-senha" disabled={busy}>
-              Esqueci minha senha
-            </Button>
-          </Stack>
-        )}
-      </Container>
-    </Box>
+          </Button>
+          <Button
+            component={RouterLink}
+            to="/recuperar-senha"
+            disabled={busy}
+            sx={{ alignSelf: 'center' }}
+          >
+            Esqueci minha senha
+          </Button>
+        </Stack>
+      )}
+    </PublicLayout>
   );
 }
